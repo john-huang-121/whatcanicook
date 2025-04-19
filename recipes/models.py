@@ -13,9 +13,9 @@ class Cuisine(models.TextChoices):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    instructions = models.TextField()
     cook_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
+    instructions = models.TextField()
     cuisine = models.CharField(
         max_length=20,
         choices=Cuisine.choices,

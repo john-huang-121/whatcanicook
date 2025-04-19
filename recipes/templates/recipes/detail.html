@@ -1,0 +1,11 @@
+{% if recipe %}
+<h1>{{ recipe.title }}</h1>
+
+<h2>{{ recipe.description }}</h2>
+
+<h3>Cook Time: {{ recipe.cook_time }}</h3>
+<h3>Serving Size: {{ recipe.servings}}</h3>
+<h3>Cuisine: {{ recipe.cuisine }}</h3>
+{% else %}
+<h1>No Recipe exists.</h1>
+{% endif %}
