@@ -34,10 +34,13 @@ class Ingredient(models.Model):
 
     def __str__(self):
         return self.name
-
+    
+    def find_all_ingredient_recipes(self):
+        return Recipe.objects.filter(recipe_ingredients__ingredient=self).distinct()
+        
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients')
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='recipe_ingredients')
     quantity = models.FloatField()
     unit = models.CharField(max_length=64)
 
