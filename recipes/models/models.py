@@ -10,11 +10,19 @@ class Cuisine(models.TextChoices):
     KOREAN = 'korean', 'Korean'
     AMERICAN = 'american', 'American'
 
+class ServingUnit(models.Model):
+    text = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.text
+
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    prep_time = models.CharField(max_length=100, blank=True)
     cook_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
+    serving_unit = models.ForeignKey(ServingUnit, null=True, blank=True, on_delete=models.SET_NULL)
     instructions = models.TextField()
     cuisine = models.CharField(
         max_length=20,
