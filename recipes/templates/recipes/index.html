@@ -1,3 +1,4 @@
+{% load static %}
 <h1>Recipes Index</h1>
 
 <ul>
@@ -5,3 +6,18 @@
     <li><a href="{% url 'detail' recipe.id %}">{{ recipe.title }}</a></li>
 {% endfor %}
 </ul>
+
+<!-- <!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photo Grid with Tailwind CSS</title>
+    <link
+      rel="stylesheet"
+      href="{% static 'css/output.css' %}"
+      type="text/css"
+    />
+  </head>
+
+</html> -->
