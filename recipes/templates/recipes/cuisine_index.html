@@ -15,7 +15,7 @@
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-1 lg:grid-cols-4 xl:gap-x-8">
                 {% for cuisine in cuisines_list %}
                 <div class="group relative">
-                    <a href="{% url 'recipes:cuisine' cuisine %}">
+                    <a href="{% url 'recipes:cuisine' cuisine|lower %}">
                         <div class="p-4 outline border-solid border-gray-100 rounded-xl group-hover:text-red-500">
                             <h1 class="text-sm text-center text-gray-700 group-hover:text-red-500">
                                 {{ cuisine }}

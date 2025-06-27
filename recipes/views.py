@@ -11,7 +11,7 @@ def cuisine_index(request):
     return render(request, 'recipes/cuisine_index.html', context)
 
 def cuisine(request, cuisine_type):
-    cuisine_list = Recipe.objects.get(name=cuisine_type)
+    cuisine_list = Recipe.objects.filter(cuisine=cuisine_type)
     context = {'cuisine_list': cuisine_list}
 
     return render(request, 'recipes/cuisine.html', context)
