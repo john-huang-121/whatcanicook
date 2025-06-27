@@ -4,11 +4,17 @@ from .models import Recipe, Cuisine
 from .forms import RecipeForm
 
 # Create your views here.
-def index(request):
+def cuisine_index(request):
     cuisines_list = [choice.label for choice in Cuisine]
     context = {'cuisines_list': cuisines_list}
 
-    return render(request, 'recipes/index.html', context)
+    return render(request, 'recipes/cuisine_index.html', context)
+
+def cuisine(request, cuisine_type):
+    cuisine_list = Recipe.objects.get(name=cuisine_type)
+    context = {'cuisine_list': cuisine_list}
+
+    return render(request, 'recipes/cuisine.html', context)
 
 def detail(request, recipe_id):
     recipe = get_object_or_404(Recipe, pk=recipe_id)

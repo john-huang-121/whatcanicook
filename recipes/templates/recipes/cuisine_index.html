@@ -12,18 +12,18 @@
                     Cuisines often evolve from geography, climate, religion, and local history, offering a unique taste of a community’s identity.
                 </p>
             </div>
-            <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
-                <dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-4 lg:gap-y-16">
+            <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-1 lg:grid-cols-4 xl:gap-x-8">
                 {% for cuisine in cuisines_list %}
-                    <div class="relative pl-16">
-                        <dt class="text-base/7 font-semibold text-gray-900">
-                            <div class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600">
-                            </div>
-                            {{ cuisine }}
-                        </dt>
-                    </div>
+                <div class="group relative">
+                    <a href="{% url 'recipes:cuisine' cuisine %}">
+                        <div class="p-4 outline border-solid border-gray-100 rounded-xl group-hover:text-red-500">
+                            <h1 class="text-sm text-center text-gray-700 group-hover:text-red-500">
+                                {{ cuisine }}
+                            </h1>
+                        </div>
+                    </a>
+                </div>
                 {% endfor %}
-                </dl>
             </div>
         </div>
     </div>

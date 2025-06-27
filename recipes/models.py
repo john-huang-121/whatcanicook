@@ -35,6 +35,8 @@ class Cuisine(models.TextChoices):
     EASTERN_EUROPEAN = 'eastern_european', 'Eastern European'
     RUSSIAN = 'russian', 'Russian'
     POLISH = 'polish', 'Polish'
+    # Miscellaneous
+    MISCELLANEOUS = 'miscellaneous', 'Miscellaneous'
 
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
