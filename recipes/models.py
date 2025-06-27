@@ -3,12 +3,38 @@ from django.conf import settings
 
 # Create your models here.
 class Cuisine(models.TextChoices):
-    ITALIAN = 'italian', 'Italian'
+    # Western
+    AMERICAN = 'american', 'American'
     FRENCH = 'french', 'French'
+    ITALIAN = 'italian', 'Italian'
+    SPANISH = 'spanish', 'Spanish'
+    MEDITERRANEAN = 'mediterranean', 'Mediterranean'
+    # Asian
     CHINESE = 'chinese', 'Chinese'
     JAPANESE = 'japanese', 'Japanese'
     KOREAN = 'korean', 'Korean'
-    AMERICAN = 'american', 'American'
+    THAI = 'thai', 'Thai'
+    VIETNAMESE = 'vietnamese', 'Vietnamese'
+    INDIAN = 'indian', 'Indian'
+    FILIPINO = 'filipino', 'Filipino'
+    MALAYSIAN = 'malaysian', 'Malaysian'
+    INDONESIAN = 'indonesian', 'Indonesian'
+    # Middle Eastern
+    MIDDLE_EASTERN = 'middle_eastern', 'Middle Eastern'
+    # African
+    MOROCCAN = 'moroccan', 'Moroccan'
+    ETHIOPIAN = 'ethiopian', 'Ethiopian'
+    WEST_AFRICAN = 'west_african', 'West African'
+    # Latin American & Caribbean
+    MEXICAN = 'mexican', 'Mexican'
+    BRAZILIAN = 'brazilian', 'Brazilian'
+    PERUVIAN = 'peruvian', 'Peruvian'
+    ARGENTINIAN = 'argentinian', 'Argentinian'
+    CARIBBEAN = 'caribbean', 'Caribbean'
+    # Eastern European
+    EASTERN_EUROPEAN = 'eastern_european', 'Eastern European'
+    RUSSIAN = 'russian', 'Russian'
+    POLISH = 'polish', 'Polish'
 
 class Recipe(models.Model):
     title = models.CharField(max_length=255)

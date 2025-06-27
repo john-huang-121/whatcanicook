@@ -1,12 +1,12 @@
 from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
 
-from .models import Recipe
+from .models import Recipe, Cuisine
 from .forms import RecipeForm
 
 # Create your views here.
 def index(request):
-    recipes_list = Recipe.objects.all()
-    context = {'recipes_list': recipes_list}
+    cuisines_list = [choice.label for choice in Cuisine]
+    context = {'cuisines_list': cuisines_list}
 
     return render(request, 'recipes/index.html', context)
 

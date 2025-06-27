@@ -1,12 +1,31 @@
 {% extends 'splash/base.html' %}
 {% load static %}
 {% block content %}
-<h1>Recipes Index</h1>
-
-<ul>
-{% for recipe in recipes_list %}
-    <li><a href="{% url 'recipes:detail' recipe.id %}">{{ recipe.title }}</a></li>
-{% endfor %}
-</ul>
-
+<main>
+    <div class="bg-white py-24 sm:py-32">
+        <div class="mx-auto max-w-7xl px-6 lg:px-8">
+            <div class="mx-auto max-w-4xl lg:text-center">
+                <p class="mt-2 text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">Cuisines</p>
+                <p class="mt-6 text-base text-gray-700">
+                    Cuisines are distinctive styles of cooking that reflect the ingredients, techniques, and traditions of a particular culture, region, or country. 
+                    They shape how food is prepared, seasoned, and served—ranging from the bold spices of Indian cuisine to the delicate balance of flavors in Japanese dishes. 
+                    Cuisines often evolve from geography, climate, religion, and local history, offering a unique taste of a community’s identity.
+                </p>
+            </div>
+            <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
+                <dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-4 lg:gap-y-16">
+                {% for cuisine in cuisines_list %}
+                    <div class="relative pl-16">
+                        <dt class="text-base/7 font-semibold text-gray-900">
+                            <div class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600">
+                            </div>
+                            {{ cuisine }}
+                        </dt>
+                    </div>
+                {% endfor %}
+                </dl>
+            </div>
+        </div>
+    </div>
+</main>
 {% endblock content %}
