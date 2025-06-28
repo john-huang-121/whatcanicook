@@ -12,7 +12,7 @@ def cuisine_index(request):
 
 def cuisine(request, cuisine_type):
     cuisine_list = Recipe.objects.filter(cuisine=cuisine_type)
-    context = {'cuisine_list': cuisine_list}
+    context = {'cuisine_list': cuisine_list, 'cuisine_type': cuisine_type}
 
     return render(request, 'recipes/cuisine.html', context)
 

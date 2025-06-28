@@ -2,12 +2,27 @@
 {% load static %}
 {% block content %}
 <main>
-    <h1>Recipes Index</h1>
+    <div class="bg-white">
+        <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
+            <div class="mx-auto max-w-4xl lg:text-center">
+                <p class="mt-2 text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
+                    {{ cuisine_type }}
+                </p>
+            </div>
+            <h2 class="sr-only">{{ cuisine_type }}</h2>
 
-    <ul>
-    {% for recipe in cuisine_list %}
-        <li><a href="{% url 'recipes:detail' recipe.id %}">{{ recipe.title }}</a></li>
-    {% endfor %}
-    </ul>
+            <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-8">
+            {% for recipe in cuisine_list %}
+                <a href="{% url 'recipes:detail' recipe.id %}" class="group">
+                    <img src="https://www.allrecipes.com/thmb/oggFsonsSCzd8D4MX0CBwx1BnJ4=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/9400782-66267980c5c54f64acbfbf5bec31dd5b.jpg" alt="Tall slender porcelain bottle with natural clay textured body and cork stopper." class="aspect-square w-full rounded-lg bg-gray-200 object-cover group-hover:opacity-75 xl:aspect-7/8" />
+                    <h3 class="mt-1 text-sm text-gray-900">{{ recipe.title }}</h3>
+                    <p class="mt-1 text-sm text-gray-700">{{ recipe.description }}</p>
+                    <p class="mt-1 text-sm text-gray-700">Cook Time: {{ recipe.cook_time }}</p>
+                    <p class="mt-1 text-sm text-gray-700">Serving Size: {{ recipe.servings}}</p>
+                </a>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
 </main>
 {% endblock content %}
