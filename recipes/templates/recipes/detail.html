@@ -1,4 +1,57 @@
-{% if recipe %}
+{% extends 'splash/base.html' %}
+{% load static %}
+{% block content %}
+<div class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+  {% if recipe %}
+    <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+      
+      <!-- Header Image Placeholder -->
+      <div class="h-64 bg-gray-200 flex items-center justify-center text-gray-400 text-xl">
+        Recipe Image (optional)
+      </div>
+
+      <!-- Recipe Content -->
+      <div class="p-6 sm:p-8 font-sans">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ recipe.title }}</h1>
+        
+        {% if recipe.description %}
+          <p class="text-lg text-gray-700 mb-6">{{ recipe.description }}</p>
+        {% endif %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-800 mb-6">
+          <div>
+            <h3 class="text-sm font-semibold uppercase text-gray-500">Cook Time</h3>
+            <p class="text-xl">{{ recipe.cook_time }} minutes</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold uppercase text-gray-500">Servings</h3>
+            <p class="text-xl">{{ recipe.servings }}</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold uppercase text-gray-500">Cuisine</h3>
+            <p class="text-xl">{{ recipe.cuisine|title }}</p>
+          </div>
+        </div>
+
+        {% if recipe.instructions %}
+          <div class="mt-6">
+            <h2 class="text-2xl font-semibold text-gray-900 mb-2">Instructions</h2>
+            <p class="text-gray-700 whitespace-pre-line">{{ recipe.instructions }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  
+  {% else %}
+    <div class="max-w-xl mx-auto text-center bg-white p-8 rounded-lg shadow-md">
+      <h1 class="text-2xl font-semibold text-gray-800">No Recipe Exists.</h1>
+      <p class="text-gray-600 mt-2">Please check back later or return to browse recipes.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock content %}
+
+{% comment %} {% if recipe %}
 <h1>{{ recipe.title }}</h1>
 
 <h2>{{ recipe.description }}</h2>
@@ -8,4 +61,4 @@
 <h3>Cuisine: {{ recipe.cuisine }}</h3>
 {% else %}
 <h1>No Recipe exists.</h1>
-{% endif %}
+{% endif %} {% endcomment %}
