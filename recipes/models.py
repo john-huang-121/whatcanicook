@@ -41,6 +41,7 @@ class Cuisine(models.TextChoices):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    prep_time = models.PositiveIntegerField(help_text="Time in minutes")
     cook_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
     instructions = models.TextField()
@@ -56,6 +57,9 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def total_time(self):
+        return self.prep_time + self.cook_time
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
