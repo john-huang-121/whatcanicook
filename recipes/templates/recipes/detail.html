@@ -1,11 +1,23 @@
 {% if recipe %}
-<h1>{{ recipe.title }}</h1>
+<div class="container mx-auto px-4">
+    <h1 class="text-2xl font-bold">{{ recipe.title }}</h1>
 
-<h2>{{ recipe.description }}</h2>
-
-<h3>Cook Time: {{ recipe.cook_time }}</h3>
-<h3>Serving Size: {{ recipe.servings}}</h3>
-<h3>Cuisine: {{ recipe.cuisine }}</h3>
+    <p class="mt-4">{{ recipe.description }}</p>
+    
+    <div>
+      <div>
+        <a><img class="profile-pic-placeholder" src="">Profile Pic Placeholder</a>
+      </div>
+      <div>
+        <span>By: Authorship Placeholder</span>
+        <p>Published: {{ recipe.published_date }}</p>
+      </div>
+    </div>
+    
+    <h3>Cook Time: {{ recipe.cook_time }}</h3>
+    <h3>Serving Size: {{ recipe.servings}}</h3>
+    <h3>Cuisine: {{ recipe.cuisine }}</h3>
+</div>
 {% else %}
 <h1>No Recipe exists.</h1>
 {% endif %}

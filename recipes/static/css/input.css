@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.profile-pic-placeholder {
+  height: 60px;
+  width: 60px;
+  background-color: black;
+}
