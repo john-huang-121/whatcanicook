@@ -1,23 +1,65 @@
+{% extends 'splash/base.html' %}
+{% load static %}
+{% block content %}
 {% if recipe %}
-<div class="container mx-auto px-4">
-    <h1 class="text-2xl font-bold">{{ recipe.title }}</h1>
-
-    <p class="mt-4">{{ recipe.description }}</p>
-    
-    <div>
+<div class="bg-white container">
+  <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
+    <div class="mx-auto max-w-4xl lg:text-center">
       <div>
-        <a><img class="profile-pic-placeholder" src="">Profile Pic Placeholder</a>
+        <h1 class="font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
+          {{ recipe.title }}
+        </h1>
+        <div class="h-4 md:w-1/2 mt-6 md:mt-0 md:pl-6 flex justify-center">
+          <img
+            src="https://www.allrecipes.com/thmb/oggFsonsSCzd8D4MX0CBwx1BnJ4=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/9400782-66267980c5c54f64acbfbf5bec31dd5b.jpg"
+            alt="Chicken Alfredo"
+            class="rounded-xl w-full max-w-sm object-cover"
+          />
+        </div>
+        <div class="grid grid-cols-1 mt-4 mb-4 sm:grid-cols-2 gap-4 text-gray-900 font-medium text-sm pt-2">
+          <div class="flex flex-col">
+            <a class="m-1.5 p-1.5">
+              <span class="sr-only">Profile Picture</span>
+              <img
+                class="h-8 w-auto"
+                src="{% static "recipes/images/default_user_pic.png" %}"
+              />
+            </a>
+            <div>
+              <p>By: Authorship Placeholder</p>
+              <p>Published: {{ recipe.published_date }}</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-900 font-medium text-sm pt-2">
+            <div>
+              <span class="block text-gray-900 font-semibold">Cook Time:</span>
+              <span class="text-gray-700">{{ recipe.cook_time }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-900 font-semibold">Serving Size:</span>
+              <span class="text-gray-700">{{ recipe.servings}}</span>
+            </div>
+            <div>
+              <span class="block text-gray-900 font-semibold">Cuisine:</span>
+              <span class="text-gray-700">{{ recipe.cuisine }}</span>
+            </div>
+          </div>
+        </div>
+        <p class="mt-4 text-gray-700 text-base">{{ recipe.description }}</p>
       </div>
+      {% comment %} direction area {% endcomment %}
       <div>
-        <span>By: Authorship Placeholder</span>
-        <p>Published: {{ recipe.published_date }}</p>
+        <h1 class="font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
+          Directions
+        </h1>
+        <p>{{ recipe.instructions }}
       </div>
     </div>
-    
-    <h3>Cook Time: {{ recipe.cook_time }}</h3>
-    <h3>Serving Size: {{ recipe.servings}}</h3>
-    <h3>Cuisine: {{ recipe.cuisine }}</h3>
+  </div>
+  {% else %}
+  <div class="container mx-auto px-4">
+    <h1>No Recipe exists.</h1>
+  </div>
+  {% endif %}
 </div>
-{% else %}
-<h1>No Recipe exists.</h1>
-{% endif %}
+{% endblock content %}
