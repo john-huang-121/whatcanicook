@@ -11,5 +11,8 @@ A recipe app built in Django
 
 add `--minify` for prod.
 
+## Use AI?
+https://huggingface.co/blog/welcome-openai-gpt-oss
+
 ## Documentation writing
 https://docs.djangoproject.com/en/5.2/internals/contributing/writing-documentation/#:~:text=virtual%20environment%20and%20install%20dependencies
