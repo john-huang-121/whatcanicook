@@ -38,8 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'splash.apps.SplashConfig',
     'recipes.apps.RecipesConfig',
+    'users',
     'allauth',
     'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -115,18 +118,8 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 
 # Add social app later
-# SOCIALACCOUNT_PROVIDERS = {
-#     'google': {
-#         # For each OAuth based provider, either add a ``SocialApp``
-#         # (``socialaccount`` app) containing the required client
-#         # credentials, or list them here:
-#         'APP': {
-#             'client_id': '123',
-#             'secret': '456',
-#             'key': ''
-#         }
-#     }
-# }
+SOCIALACCOUNT_PROVIDERS = {
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
