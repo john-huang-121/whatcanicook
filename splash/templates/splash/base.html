@@ -1,4 +1,5 @@
 {% load static %}
+{% load account %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -37,8 +38,19 @@
                 <div class="hidden lg:flex lg:gap-x-12">
                     <a href="{% url 'recipes:cuisine_index' %}" class="text-sm/6 font-semibold text-gray-900">Browse Recipes</a>
                 </div>
-                <div class="hidden lg:flex lg:flex-1 lg:justify-end">
-                    <a href="#" class="text-sm/6 font-semibold text-gray-900">Log in <span aria-hidden="true">&rarr;</span></a>
+                <div class="hidden lg:flex lg:flex-1 lg:justify-end items-center gap-4">
+                    {% if user.is_authenticated %}
+                        <span class="text-sm/6 text-gray-700">Hi, {% user_display user %}</span>
+                        <form method="post" action="{% url 'account_logout' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="text-sm/6 font-semibold text-gray-900">Log out</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'account_login' %}?next={{ request.path }}" class="text-sm/6 font-semibold text-gray-900">
+                            Log in
+                        </a>
+                        <a href="{% url 'account_signup' %}" class="text-sm/6 font-semibold text-gray-900">Sign up</a>
+                    {% endif %}
                 </div>
             </nav>
             <!-- Mobile menu, show/hide based on menu open state. Hamburger Icon. -->
@@ -64,8 +76,22 @@
                                 <a href="{% url 'recipes:cuisine_index' %}" class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">Browse Recipes</a>
                             </div>
                             <div class="py-6">
-                                <a href="#" class="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">Log in</a>
-                            </div>
+                                {% if user.is_authenticated %}
+                                    <form method="post" action="{% url 'account_logout' %}">
+                                    {% csrf_token %}
+                                    <button class="-mx-3 block w-full text-left rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">
+                                        Log out
+                                    </button>
+                                    </form>
+                                {% else %}
+                                    <a href="{% url 'account_login' %}?next={{ request.path }}" class="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">
+                                        Log in
+                                    </a>
+                                    <a href="{% url 'account_signup' %}" class="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">
+                                        Sign up
+                                    </a>
+                                {% endif %}
+                                </div>
                         </div>
                     </div>
                 </div>
