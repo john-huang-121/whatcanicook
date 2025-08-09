@@ -26,7 +26,7 @@
               />
             </a>
             <div>
-              <p>By: Authorship Placeholder</p>
+              <p>By: {{ recipe.created_by|default:"Unknown" }}</p>
               <p>Published: {{ recipe.published_date }}</p>
             </div>
           </div>
