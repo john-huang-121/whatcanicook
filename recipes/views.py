@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404, redirect
 
 from .models import Recipe, Cuisine
 from .forms import RecipeForm
@@ -25,7 +25,10 @@ def create(request):
     form = RecipeForm(request.POST or None)
 
     if form.is_valid():
-        form.save()
+        recipe = form.save(commit=False)
+        recipe.created_by = request.user
+        recipe.save()
+        return redirect('recipes:detail', recipe_id=recipe.id)
 
     context = {'form' : form}
     return render(request, 'recipes/create.html', context)
@@ -37,7 +40,7 @@ def update(request, recipe_id):
 
     if form.is_valid():
         form.save()
-        return HttpResponseRedirect('/'+id)
+        return redirect('recipes:detail', recipe_id=recipe_id)
 
     context = {'form' : form}
     return render(request, 'recipes/update.html', context)
@@ -48,7 +51,7 @@ def delete(request, recipe_id):
     if request.method == 'POST':
         obj.delete()
 
-        return HttpResponseRedirect('/')
+        return redirect('recipes:cuisine_index')
     
     context = {}
     return render(request, 'recipes/delete.html', context)
