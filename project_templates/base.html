@@ -1,0 +1,26 @@
+{% load static account %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link
+            rel="stylesheet"
+            href="{% static 'css/output.css' %}"
+            type="text/css"
+        />
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon"
+              href="{% static 'images/chef-favicon.png' %}"
+              type="image/x-icon">
+        <title>WhatCanICook?</title>
+    </head>
+    <body>
+        {% include "partials/_navbar.html" %}
+        {% block content %}{% endblock content %}
+    </body>
+    <footer>
+        <a target="_blank" href="https://icons8.com/icon/47475/chef-hat">Chef Hat</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>
+        <a href="https://www.flaticon.com/free-icons/chef-hat" title="chef hat icons">Chef hat icons created by Cuputo - Flaticon</a>
+    </footer>
+</html>
