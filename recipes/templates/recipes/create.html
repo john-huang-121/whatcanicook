@@ -1,14 +1,16 @@
-{% extends "base.html" %}
-{% load static %}
-{% block content %}
+{% extends "base.html" %} {% load static %} {% block content %}
 <form method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
 
-    <!-- Security token -->
-    {% csrf_token %}
+  <h2 class="text-xl font-semibold mb-2">Recipe Details</h2>
+  {{ form.as_p }}
 
-    <!-- Using the formset -->
-    {{ form.as_p }}
-    
-    <input type="submit" value="Submit">
+  <h2 class="text-xl font-semibold mt-4 mb-2">Ingredients</h2>
+  {{ formset.management_form }} {% for subform in formset %}
+  <div class="border p-4 mb-2 rounded bg-gray-50">{{ subform.as_p }}</div>
+  {% endfor %}
+
+  <button type="submit" class="mt-4 px-4 py-2 bg-green-600 text-white rounded">
+    Create Recipe
+  </button>
 </form>
-{% endblock content %}

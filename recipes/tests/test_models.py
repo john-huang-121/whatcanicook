@@ -14,6 +14,7 @@ class RecipeModelTests(TestCase):
             title="Scrambled Eggs",
             description="Simple scrambled eggs",
             instructions="Beat eggs, cook in pan with salt.",
+            prep_time=2,
             cook_time=5,
             servings=1,
             cuisine=Cuisine.AMERICAN,
@@ -51,6 +52,14 @@ class RecipeModelTests(TestCase):
         self.assertIn(self.recipe1, egg_recipes)
         self.assertNotIn(self.recipe2, egg_recipes)
         self.assertEqual(egg_recipes.count(), 1)
+
+    def test_recipe_ingredients_many_to_many(self):
+        recipe1_ingredients = set(self.recipe1.ingredients.values_list("name", flat=True))
+        self.assertEqual(recipe1_ingredients, {"Eggs", "Salt"})
+
+    def test_total_time(self):
+        self.assertEqual(self.recipe1.total_time(), 7)
+        self.assertEqual(self.recipe2.total_time(), 10)
 
     def test_recipeingredient_str(self):
         ri = RecipeIngredient.objects.get(recipe=self.recipe1, ingredient=self.salt)

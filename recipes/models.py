@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 
 # Create your models here.
 class Cuisine(models.TextChoices):
@@ -41,6 +40,11 @@ class Cuisine(models.TextChoices):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    prep_time = models.PositiveIntegerField(
+        help_text="Time in minutes",
+        blank=True,
+        null=True,
+    )
     cook_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
     instructions = models.TextField()
@@ -50,13 +54,14 @@ class Recipe(models.Model):
         blank=True,
         null=True,
     )
+    ingredients = models.ManyToManyField(
+        'Ingredient',
+        through='RecipeIngredient',
+        related_name='recipes',
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='recipes'
-    )
 
     def __str__(self):
         return self.title
@@ -65,6 +70,9 @@ class Recipe(models.Model):
     def published_date(self):
         return self.created_at.strftime("%B %d, %Y")
 
+    def total_time(self):
+        return (self.prep_time or 0) + self.cook_time
+
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
@@ -72,13 +80,17 @@ class Ingredient(models.Model):
         return self.name
     
     def find_all_ingredient_recipes(self):
-        return Recipe.objects.filter(recipe_ingredients__ingredient=self).distinct()
-        
+        return self.recipes.all()
+         
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients')
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='recipe_ingredients')
     quantity = models.FloatField()
-    unit = models.CharField(max_length=64)
+    unit = models.CharField(max_length=64, blank=True)
 
     def __str__(self):
-        return f"{self.quantity} {self.unit} {self.ingredient.name}"
+        parts = [str(self.quantity)]
+        if self.unit:
+            parts.append(self.unit)
+        parts.append(self.ingredient.name)
+        return " ".join(parts)

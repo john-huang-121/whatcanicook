@@ -1,65 +1,69 @@
-{% extends "base.html" %}
-{% load static %}
-{% block content %}
-{% if recipe %}
-<div class="bg-white container">
-  <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
-    <div class="mx-auto max-w-4xl lg:text-center">
-      <div>
-        <h1 class="font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
-          {{ recipe.title }}
-        </h1>
-        <div class="h-4 md:w-1/2 mt-6 md:mt-0 md:pl-6 flex justify-center">
-          <img
-            src="https://www.allrecipes.com/thmb/oggFsonsSCzd8D4MX0CBwx1BnJ4=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/9400782-66267980c5c54f64acbfbf5bec31dd5b.jpg"
-            alt="Chicken Alfredo"
-            class="rounded-xl w-full max-w-sm object-cover"
-          />
+{% extends 'splash/base.html' %} {% load static %} {% block content %}
+<div class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+  {% if recipe %}
+  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <!-- Header Image Placeholder -->
+    <div
+      class="h-64 bg-gray-200 flex items-center justify-center text-gray-400 text-xl"
+    >
+      Recipe Image (optional)
+    </div>
+
+    <!-- Recipe Content -->
+    <div class="p-6 sm:p-8 font-sans">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ recipe.title }}</h1>
+
+      {% if recipe.description %}
+      <p class="text-lg text-gray-700 mb-6">{{ recipe.description }}</p>
+      {% endif %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-800 mb-6">
+        <div>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">
+            Cook Time
+          </h3>
+          <p class="text-xl">{{ recipe.cook_time }} minutes</p>
         </div>
-        <div class="grid grid-cols-1 mt-4 mb-4 sm:grid-cols-2 gap-4 text-gray-900 font-medium text-sm pt-2">
-          <div class="flex flex-col">
-            <a class="m-1.5 p-1.5">
-              <span class="sr-only">Profile Picture</span>
-              <img
-                class="h-8 w-auto"
-                src="{% static "recipes/images/default_user_pic.png" %}"
-              />
-            </a>
-            <div>
-              <p>By: {{ recipe.created_by|default:"Unknown" }}</p>
-              <p>Published: {{ recipe.published_date }}</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-900 font-medium text-sm pt-2">
-            <div>
-              <span class="block text-gray-900 font-semibold">Cook Time:</span>
-              <span class="text-gray-700">{{ recipe.cook_time }}</span>
-            </div>
-            <div>
-              <span class="block text-gray-900 font-semibold">Serving Size:</span>
-              <span class="text-gray-700">{{ recipe.servings}}</span>
-            </div>
-            <div>
-              <span class="block text-gray-900 font-semibold">Cuisine:</span>
-              <span class="text-gray-700">{{ recipe.cuisine }}</span>
-            </div>
-          </div>
+        <div>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">
+            Servings
+          </h3>
+          <p class="text-xl">{{ recipe.servings }}</p>
         </div>
-        <p class="mt-4 text-gray-700 text-base">{{ recipe.description }}</p>
+        <div>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">Cuisine</h3>
+          <p class="text-xl">{{ recipe.cuisine|title }}</p>
+        </div>
       </div>
-      {% comment %} direction area {% endcomment %}
-      <div>
-        <h1 class="font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
-          Directions
-        </h1>
-        <p>{{ recipe.instructions }}
+
+      {% if recipe.instructions %}
+      <div class="mt-6">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-2">Instructions</h2>
+        <p class="text-gray-700 whitespace-pre-line">
+          {{ recipe.instructions }}
+        </p>
       </div>
+      {% endif %}
     </div>
   </div>
+
   {% else %}
-  <div class="container mx-auto px-4">
-    <h1>No Recipe exists.</h1>
+  <div class="max-w-xl mx-auto text-center bg-white p-8 rounded-lg shadow-md">
+    <h1 class="text-2xl font-semibold text-gray-800">No Recipe Exists.</h1>
+    <p class="text-gray-600 mt-2">
+      Please check back later or return to browse recipes.
+    </p>
   </div>
   {% endif %}
 </div>
-{% endblock content %}
+{% endblock content %} {% comment %} {% if recipe %}
+<h1>{{ recipe.title }}</h1>
+
+<h2>{{ recipe.description }}</h2>
+
+<h3>Cook Time: {{ recipe.cook_time }}</h3>
+<h3>Serving Size: {{ recipe.servings}}</h3>
+<h3>Cuisine: {{ recipe.cuisine }}</h3>
+{% else %}
+<h1>No Recipe exists.</h1>
+{% endif %} {% endcomment %}
