@@ -1,7 +1,7 @@
-from django.shortcuts import render, get_object_or_404, HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404, HttpResponseRedirect, redirect
 
 from .models import Recipe, Cuisine
-from .forms import RecipeForm
+from .forms import RecipeForm, RecipeIngredientFormSet
 
 # Create your views here.
 def cuisine_index(request):
@@ -23,12 +23,18 @@ def detail(request, recipe_id):
 
 def create(request):
     form = RecipeForm(request.POST or None)
+    formset = RecipeIngredientFormSet(request.POST or None)
 
-    if form.is_valid():
-        form.save()
+    if form.is_valid() and formset.is_valid():
+        recipe = form.save()
+        formset.instance = recipe
+        formset.save()
+        return redirect('recipes:detail', recipe_id=recipe.id)
 
-    context = {'form' : form}
-    return render(request, 'recipes/create.html', context)
+    return render(request, 'recipes/create.html', {
+        'form': form,
+        'formset': formset,
+    })
 
 def update(request, recipe_id):
     obj = get_object_or_404(Recipe, pk=recipe_id)
