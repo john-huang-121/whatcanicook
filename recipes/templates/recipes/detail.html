@@ -1,33 +1,52 @@
-{% extends 'splash/base.html' %} {% load static %} {% block content %}
-<div class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
-  {% if recipe %}
-  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-    <!-- Header Image Placeholder -->
-    <div
-      class="h-64 bg-gray-200 flex items-center justify-center text-gray-400 text-xl"
-    >
+{% extends "base.html" %}
+
+{% block content %}
+<main class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-3xl overflow-hidden rounded-xl bg-white shadow-lg">
+    <div class="flex h-64 items-center justify-center bg-gray-200 text-xl text-gray-400">
       Recipe Image (optional)
     </div>
 
-    <!-- Recipe Content -->
-    <div class="p-6 sm:p-8 font-sans">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ recipe.title }}</h1>
+    <div class="p-6 sm:p-8">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">{{ recipe.title }}</h1>
+          <p class="mt-2 text-sm text-gray-600">
+            By {{ recipe.created_by.username }} on {{ recipe.published_date }}
+          </p>
+        </div>
+        <div class="text-right">
+          {% if recipe.is_public %}
+            <span class="rounded bg-green-100 px-3 py-1 text-sm font-medium text-green-700">Public</span>
+          {% else %}
+            <span class="rounded bg-red-100 px-3 py-1 text-sm font-medium text-red-700">Private</span>
+          {% endif %}
+          {% if request.user == recipe.created_by %}
+            <div class="mt-4 flex justify-end gap-4">
+              <a href="{% url 'recipes:update' recipe.id %}" class="text-sm font-semibold text-gray-900">Edit</a>
+              <a href="{% url 'recipes:delete' recipe.id %}" class="text-sm font-semibold text-red-700">Delete</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
 
       {% if recipe.description %}
-      <p class="text-lg text-gray-700 mb-6">{{ recipe.description }}</p>
+        <p class="mt-6 text-lg text-gray-700">{{ recipe.description }}</p>
       {% endif %}
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-800 mb-6">
+      <div class="mt-8 grid grid-cols-1 gap-4 text-gray-800 sm:grid-cols-2">
         <div>
-          <h3 class="text-sm font-semibold uppercase text-gray-500">
-            Cook Time
-          </h3>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">Prep Time</h3>
+          <p class="text-xl">
+            {% if recipe.prep_time %}{{ recipe.prep_time }} minutes{% else %}Not listed{% endif %}
+          </p>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">Cook Time</h3>
           <p class="text-xl">{{ recipe.cook_time }} minutes</p>
         </div>
         <div>
-          <h3 class="text-sm font-semibold uppercase text-gray-500">
-            Servings
-          </h3>
+          <h3 class="text-sm font-semibold uppercase text-gray-500">Servings</h3>
           <p class="text-xl">{{ recipe.servings }}</p>
         </div>
         <div>
@@ -36,34 +55,26 @@
         </div>
       </div>
 
-      {% if recipe.instructions %}
-      <div class="mt-6">
-        <h2 class="text-2xl font-semibold text-gray-900 mb-2">Instructions</h2>
-        <p class="text-gray-700 whitespace-pre-line">
-          {{ recipe.instructions }}
-        </p>
+      <div class="mt-8">
+        <h2 class="mb-3 text-2xl font-semibold text-gray-900">Ingredients</h2>
+        <ul class="space-y-2 text-gray-700">
+          {% for item in recipe.recipe_ingredients.all %}
+            <li class="rounded border border-gray-100 px-4 py-3">
+              {{ item }}
+            </li>
+          {% empty %}
+            <li class="text-gray-600">No ingredients listed yet.</li>
+          {% endfor %}
+        </ul>
       </div>
+
+      {% if recipe.instructions %}
+        <div class="mt-8">
+          <h2 class="mb-2 text-2xl font-semibold text-gray-900">Instructions</h2>
+          <p class="whitespace-pre-line text-gray-700">{{ recipe.instructions }}</p>
+        </div>
       {% endif %}
     </div>
   </div>
-
-  {% else %}
-  <div class="max-w-xl mx-auto text-center bg-white p-8 rounded-lg shadow-md">
-    <h1 class="text-2xl font-semibold text-gray-800">No Recipe Exists.</h1>
-    <p class="text-gray-600 mt-2">
-      Please check back later or return to browse recipes.
-    </p>
-  </div>
-  {% endif %}
-</div>
-{% endblock content %} {% comment %} {% if recipe %}
-<h1>{{ recipe.title }}</h1>
-
-<h2>{{ recipe.description }}</h2>
-
-<h3>Cook Time: {{ recipe.cook_time }}</h3>
-<h3>Serving Size: {{ recipe.servings}}</h3>
-<h3>Cuisine: {{ recipe.cuisine }}</h3>
-{% else %}
-<h1>No Recipe exists.</h1>
-{% endif %} {% endcomment %}
+</main>
+{% endblock content %}

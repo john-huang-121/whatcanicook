@@ -19,8 +19,12 @@
                             <img src="https://www.allrecipes.com/thmb/oggFsonsSCzd8D4MX0CBwx1BnJ4=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/9400782-66267980c5c54f64acbfbf5bec31dd5b.jpg" alt="Tall slender porcelain bottle with natural clay textured body and cork stopper." class="aspect-square rounded-lg rounded-b-none w-full object-cover group-hover:opacity-75 xl:aspect-7/8" />
                             <div class="flex flex-col flex-grow p-2 font-sans">
                                 <p class="mt-1 text-sm text-gray-700">{{ recipe.total_time }} Minutes</p>
+                                {% if not recipe.is_public %}
+                                    <p class="mt-1 text-sm font-medium text-red-700">Private to you</p>
+                                {% endif %}
                                 <div class="flex-grow"></div>
                                 <h3 class="mt-1 text-2xl text-gray-900">{{ recipe.title }}</h3>
+                                <p class="mt-1 text-sm text-gray-600">By {{ recipe.created_by.username }}</p>
                             </div>
                         </a>
                     </div>

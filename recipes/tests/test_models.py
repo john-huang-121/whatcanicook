@@ -1,10 +1,25 @@
 from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 
 from ..models import Recipe, RecipeIngredient, Ingredient, Cuisine
+
+User = get_user_model()
 
 # Create your tests here.
 class RecipeModelTests(TestCase):
     def setUp(self):
+        self.owner = User.objects.create_user(
+            username="owner",
+            email="owner@example.com",
+            password="testpass123",
+        )
+        self.other_user = User.objects.create_user(
+            username="other",
+            email="other@example.com",
+            password="testpass123",
+        )
+
         # Create ingredients
         self.salt = Ingredient.objects.create(name="Salt")
         self.eggs = Ingredient.objects.create(name="Eggs")
@@ -18,6 +33,7 @@ class RecipeModelTests(TestCase):
             cook_time=5,
             servings=1,
             cuisine=Cuisine.AMERICAN,
+            created_by=self.owner,
         )
 
         self.recipe2 = Recipe.objects.create(
@@ -27,6 +43,19 @@ class RecipeModelTests(TestCase):
             cook_time=10,
             servings=2,
             cuisine=Cuisine.ITALIAN,
+            created_by=self.owner,
+        )
+
+        self.private_recipe = Recipe.objects.create(
+            title="Secret Soup",
+            description="Hidden recipe",
+            instructions="Keep it quiet.",
+            prep_time=5,
+            cook_time=20,
+            servings=4,
+            cuisine=Cuisine.FRENCH,
+            created_by=self.other_user,
+            is_public=False,
         )
 
         # Link ingredients to recipes
@@ -60,6 +89,16 @@ class RecipeModelTests(TestCase):
     def test_total_time(self):
         self.assertEqual(self.recipe1.total_time(), 7)
         self.assertEqual(self.recipe2.total_time(), 10)
+
+    def test_visible_to_anonymous(self):
+        visible = Recipe.objects.visible_to(AnonymousUser())
+        self.assertIn(self.recipe1, visible)
+        self.assertIn(self.recipe2, visible)
+        self.assertNotIn(self.private_recipe, visible)
+
+    def test_visible_to_owner(self):
+        visible = Recipe.objects.visible_to(self.other_user)
+        self.assertIn(self.private_recipe, visible)
 
     def test_recipeingredient_str(self):
         ri = RecipeIngredient.objects.get(recipe=self.recipe1, ingredient=self.salt)

@@ -24,6 +24,7 @@
         </div>
         <div class="hidden lg:flex lg:flex-1 lg:justify-end items-center gap-4">
             {% if user.is_authenticated %}
+                <a href="{% url 'accounts:profile' %}" class="text-sm/6 font-semibold text-gray-900">My Profile</a>
                 <span class="text-sm/6 text-gray-700">Hi, {% user_display user %}</span>
                 <form method="post" action="{% url 'account_logout' %}">
                     {% csrf_token %}
@@ -61,6 +62,9 @@
                     </div>
                     <div class="py-6">
                         {% if user.is_authenticated %}
+                            <a href="{% url 'accounts:profile' %}" class="-mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">
+                                My Profile
+                            </a>
                             <form method="post" action="{% url 'account_logout' %}">
                             {% csrf_token %}
                             <button class="-mx-3 block w-full text-left rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-900 hover:bg-gray-50">

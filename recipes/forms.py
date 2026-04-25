@@ -13,7 +13,11 @@ class RecipeForm(forms.ModelForm):
             'cook_time',
             'servings',
             'cuisine',
+            'is_public',
         ]
+        labels = {
+            'is_public': 'Public recipe',
+        }
 
 class RecipeIngredientForm(forms.ModelForm):
     class Meta:

@@ -36,14 +36,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',
+    'django.contrib.sites',
+    'accounts.apps.AccountsConfig',
     'splash.apps.SplashConfig',
     'recipes.apps.RecipesConfig',
-    'users',
     'allauth',
     'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -70,7 +68,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'django.template.context_processors.request',
             ],
         },
     },
@@ -114,13 +111,15 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+SITE_ID = 1
+LOGIN_URL = 'account_login'
+LOGIN_REDIRECT_URL = 'accounts:profile'
+ACCOUNT_LOGOUT_REDIRECT_URL = 'splash:homepage'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-ACCOUNT_LOGIN_METHODS = {'email'}
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
-
-# Add social app later
-SOCIALACCOUNT_PROVIDERS = {
-}
+ACCOUNT_LOGIN_METHODS = {'email', 'username'}
+ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_FORMS = {'signup': 'accounts.forms.UserSignupForm'}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

@@ -1,4 +1,13 @@
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
+
+
+class RecipeQuerySet(models.QuerySet):
+    def visible_to(self, user):
+        if user.is_authenticated:
+            return self.filter(Q(is_public=True) | Q(created_by=user))
+        return self.filter(is_public=True)
 
 # Create your models here.
 class Cuisine(models.TextChoices):
@@ -54,6 +63,12 @@ class Recipe(models.Model):
         blank=True,
         null=True,
     )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='recipes',
+    )
+    is_public = models.BooleanField(default=True)
     ingredients = models.ManyToManyField(
         'Ingredient',
         through='RecipeIngredient',
@@ -62,6 +77,7 @@ class Recipe(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    objects = RecipeQuerySet.as_manager()
 
     def __str__(self):
         return self.title
@@ -72,6 +88,12 @@ class Recipe(models.Model):
 
     def total_time(self):
         return (self.prep_time or 0) + self.cook_time
+
+    def can_view(self, user):
+        return self.is_public or (user.is_authenticated and self.created_by_id == user.id)
+
+    def can_edit(self, user):
+        return user.is_authenticated and self.created_by_id == user.id
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
