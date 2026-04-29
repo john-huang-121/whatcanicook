@@ -5,6 +5,7 @@ from django.urls import reverse
 from allauth.account.forms import LoginForm
 
 from .forms import UserSignupForm
+from .models import Profile
 
 User = get_user_model()
 
@@ -39,8 +40,13 @@ class SignupTests(TestCase):
         user = User.objects.get(username="jane")
         self.assertRedirects(response, reverse("accounts:profile"))
         self.assertEqual(user.email, "jane@example.com")
-        self.assertEqual(user.first_name, "Jane")
-        self.assertEqual(user.last_name, "Doe")
+        user_field_names = {field.name for field in User._meta.get_fields()}
+        self.assertNotIn("first_name", user_field_names)
+        self.assertNotIn("last_name", user_field_names)
+        self.assertIsNotNone(user.created_at)
+        self.assertIsNotNone(user.updated_at)
+        self.assertEqual(user.profile.first_name, "Jane")
+        self.assertEqual(user.profile.last_name, "Doe")
         self.assertTrue(user.check_password("testpass123"))
 
     def test_signup_requires_name_fields(self):
@@ -107,3 +113,61 @@ class LoginTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["form"].errors)
         self.assertNotIn(SESSION_KEY, self.client.session)
+
+
+class ProfileTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="jane",
+            email="jane@example.com",
+            password="testpass123",
+        )
+
+    def test_profile_is_created_for_new_user(self):
+        self.assertTrue(Profile.objects.filter(user=self.user).exists())
+
+    def test_profile_page_displays_profile_name(self):
+        self.user.profile.first_name = "Jane"
+        self.user.profile.last_name = "Doe"
+        self.user.profile.save()
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.get(reverse("accounts:profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Jane Doe")
+        self.assertContains(response, "Edit your profile")
+
+    def test_user_name_helpers_use_profile(self):
+        self.user.profile.first_name = "Jane"
+        self.user.profile.last_name = "Doe"
+        self.user.profile.save()
+
+        self.assertEqual(self.user.get_full_name(), "Jane Doe")
+        self.assertEqual(self.user.get_short_name(), "Jane")
+
+    def test_user_can_update_profile_fields(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.post(
+            reverse("accounts:profile"),
+            {
+                "first_name": "Janet",
+                "last_name": "Cook",
+                "twitter_x_url": "https://x.com/janetcook",
+                "instagram_url": "https://instagram.com/janetcook",
+                "facebook_url": "https://facebook.com/janetcook",
+                "linkedin_url": "https://linkedin.com/in/janetcook",
+                "birth_date": "1990-05-01",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.first_name, "Janet")
+        self.assertEqual(self.user.profile.last_name, "Cook")
+        self.assertEqual(self.user.profile.twitter_x_url, "https://x.com/janetcook")
+        self.assertEqual(self.user.profile.instagram_url, "https://instagram.com/janetcook")
+        self.assertEqual(self.user.profile.facebook_url, "https://facebook.com/janetcook")
+        self.assertEqual(self.user.profile.linkedin_url, "https://linkedin.com/in/janetcook")
+        self.assertEqual(self.user.profile.birth_date.isoformat(), "1990-05-01")

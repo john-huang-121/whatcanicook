@@ -13,8 +13,6 @@ class RecipeViewTests(TestCase):
             username="owner",
             email="owner@example.com",
             password="testpass123",
-            first_name="Owner",
-            last_name="Person",
         )
         self.other_user = User.objects.create_user(
             username="other",
