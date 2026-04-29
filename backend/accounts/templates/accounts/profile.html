@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-4xl space-y-8">
+        <section class="rounded-xl bg-white p-6 shadow-md">
+            <p class="text-sm uppercase tracking-wide text-gray-500">Profile</p>
+            <h1 class="mt-2 text-3xl font-semibold text-gray-900">{{ profile.display_name }}</h1>
+            <p class="mt-2 text-gray-700">{{ request.user.email }}</p>
+
+            {% if profile.profile_picture %}
+                <img src="{{ profile.profile_picture.url }}" alt="{{ profile.display_name }}" class="mt-6 h-28 w-28 rounded-full object-cover">
+            {% endif %}
+
+            {% if profile.twitter_x_url or profile.instagram_url or profile.facebook_url or profile.linkedin_url %}
+                <div class="mt-6 flex flex-wrap gap-3 text-sm font-semibold text-green-700">
+                    {% if profile.twitter_x_url %}
+                        <a href="{{ profile.twitter_x_url }}" target="_blank" rel="noreferrer">Twitter/X</a>
+                    {% endif %}
+                    {% if profile.instagram_url %}
+                        <a href="{{ profile.instagram_url }}" target="_blank" rel="noreferrer">Instagram</a>
+                    {% endif %}
+                    {% if profile.facebook_url %}
+                        <a href="{{ profile.facebook_url }}" target="_blank" rel="noreferrer">Facebook</a>
+                    {% endif %}
+                    {% if profile.linkedin_url %}
+                        <a href="{{ profile.linkedin_url }}" target="_blank" rel="noreferrer">LinkedIn</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="rounded-xl bg-white p-6 shadow-md">
+            <p class="text-sm uppercase tracking-wide text-gray-500">Profile Details</p>
+            <h2 class="mt-2 text-2xl font-semibold text-gray-900">Edit your profile</h2>
+
+            <form method="post" enctype="multipart/form-data" class="mt-6 grid gap-4 sm:grid-cols-2">
+                {% csrf_token %}
+                {% for field in profile_form %}
+                    <div class="{% if field.name == 'profile_picture' %}sm:col-span-2{% endif %}">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="mt-1 text-sm text-red-700">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="sm:col-span-2">
+                    <button type="submit" class="rounded bg-green-600 px-4 py-2 text-white">Save Profile</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="rounded-xl bg-white p-6 shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm uppercase tracking-wide text-gray-500">Your Recipes</p>
+                    <h2 class="mt-2 text-2xl font-semibold text-gray-900">Public</h2>
+                </div>
+                <a href="{% url 'recipes:create' %}" class="rounded bg-green-600 px-4 py-2 text-white">New Recipe</a>
+            </div>
+
+            {% if public_recipes %}
+                <div class="mt-6 space-y-3">
+                    {% for recipe in public_recipes %}
+                        <a href="{% url 'recipes:detail' recipe.id %}" class="block rounded border border-gray-100 p-4 hover:bg-gray-50">
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">{{ recipe.title }}</h3>
+                                    <p class="text-sm text-gray-600">{{ recipe.published_date }}</p>
+                                </div>
+                                <span class="text-sm font-medium text-green-700">Public</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="mt-6 text-gray-600">You have not published any public recipes yet.</p>
+            {% endif %}
+        </section>
+
+        <section class="rounded-xl bg-white p-6 shadow-md">
+            <p class="text-sm uppercase tracking-wide text-gray-500">Your Recipes</p>
+            <h2 class="mt-2 text-2xl font-semibold text-gray-900">Private</h2>
+
+            {% if private_recipes %}
+                <div class="mt-6 space-y-3">
+                    {% for recipe in private_recipes %}
+                        <a href="{% url 'recipes:detail' recipe.id %}" class="block rounded border border-gray-100 p-4 hover:bg-gray-50">
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">{{ recipe.title }}</h3>
+                                    <p class="text-sm text-gray-600">{{ recipe.published_date }}</p>
+                                </div>
+                                <span class="text-sm font-medium text-red-700">Private</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="mt-6 text-gray-600">You do not have any private recipes.</p>
+            {% endif %}
+        </section>
+    </div>
+</main>
+{% endblock content %}

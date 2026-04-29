@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="min-h-screen bg-orange-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-md rounded-xl bg-white p-6 shadow-md">
+        <h1 class="text-3xl font-semibold text-gray-900">Log Out</h1>
+        <p class="mt-4 text-gray-700">Confirm that you want to end your session.</p>
+
+        <form method="post" action="{% url 'account_logout' %}" class="mt-6">
+            {% csrf_token %}
+            <button type="submit" class="rounded bg-green-600 px-4 py-2 text-white">Log Out</button>
+        </form>
+    </div>
+</main>
+{% endblock content %}
