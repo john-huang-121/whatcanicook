@@ -1,21 +1,28 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction
+from .models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
 
 
 class RecipeIngredientReadSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="ingredient.name")
+    unit_label = serializers.SerializerMethodField()
 
     class Meta:
         model = RecipeIngredient
-        fields = ["id", "name", "quantity", "unit"]
+        fields = ["id", "name", "quantity", "unit", "unit_label", "note"]
+
+    def get_unit_label(self, obj):
+        if not obj.unit:
+            return ""
+        return obj.get_unit_display()
 
 
 class RecipeIngredientWriteSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     quantity = serializers.FloatField()
-    unit = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    unit = serializers.ChoiceField(choices=Unit.choices, required=False, allow_blank=True)
+    note = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 
 class RecipeInstructionReadSerializer(serializers.ModelSerializer):
@@ -137,6 +144,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 ingredient=ingredient,
                 quantity=item["quantity"],
                 unit=item.get("unit", "").strip(),
+                note=item.get("note", "").strip(),
             )
 
     def _replace_instructions(self, recipe, instruction_items):
@@ -160,6 +168,11 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 class CuisineSerializer(serializers.Serializer):
     value = serializers.CharField()
+    label = serializers.CharField()
+
+
+class UnitSerializer(serializers.Serializer):
+    value = serializers.CharField(allow_blank=True)
     label = serializers.CharField()
 
 

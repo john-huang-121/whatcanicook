@@ -531,7 +531,7 @@ textarea {
 
 .ingredient-row {
   display: grid;
-  grid-template-columns: 1fr 7rem 8rem auto;
+  grid-template-columns: 7rem 8rem minmax(10rem, 1fr) minmax(12rem, 1fr) auto;
   gap: 0.6rem;
 }
 

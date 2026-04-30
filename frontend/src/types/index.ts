@@ -40,17 +40,25 @@ export type Cuisine = {
   label: string
 }
 
+export type RecipeUnit = {
+  value: string
+  label: string
+}
+
 export type RecipeIngredient = {
   id: number
   name: string
   quantity: number
   unit: string
+  unit_label: string
+  note: string
 }
 
 export type RecipeIngredientInput = {
   name: string
   quantity: string
   unit: string
+  note: string
 }
 
 export type RecipeInstruction = {
@@ -99,5 +107,6 @@ export type RecipePayload = {
     name: string
     quantity: number
     unit: string
+    note: string
   }>
 }

@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 
-from ..models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction
+from ..models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
 
 User = get_user_model()
 
@@ -56,9 +56,9 @@ class RecipeModelTests(TestCase):
         )
 
         # Link ingredients to recipes
-        RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.eggs, quantity=2, unit="pcs")
-        RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.salt, quantity=0.5, unit="tsp")
-        RecipeIngredient.objects.create(recipe=self.recipe2, ingredient=self.salt, quantity=1, unit="tbsp")
+        RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.eggs, quantity=2, unit=Unit.PIECE)
+        RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.salt, quantity=0.5, unit=Unit.TEASPOON)
+        RecipeIngredient.objects.create(recipe=self.recipe2, ingredient=self.salt, quantity=1, unit=Unit.TABLESPOON)
 
         beat_eggs = Instruction.objects.create(text="Beat eggs.")
         cook_eggs = Instruction.objects.create(text="Cook in pan with salt.")
@@ -114,7 +114,7 @@ class RecipeModelTests(TestCase):
 
     def test_recipeingredient_str(self):
         ri = RecipeIngredient.objects.get(recipe=self.recipe1, ingredient=self.salt)
-        self.assertEqual(str(ri), "0.5 tsp Salt")
+        self.assertEqual(str(ri), "0.5 teaspoon(s) Salt")
 
     def test_recipeinstruction_str(self):
         recipe_instruction = RecipeInstruction.objects.get(recipe=self.recipe1, step_number=1)
