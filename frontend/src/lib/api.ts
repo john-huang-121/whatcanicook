@@ -26,13 +26,22 @@ async function ensureCsrfCookie() {
     return
   }
 
-  await fetch('/api/auth/csrf/', {
+  const response = await fetch('/api/auth/csrf/', {
     credentials: 'include',
   })
+
+  if (!response.ok) {
+    throw new ApiError(response.status, await readResponseData(response))
+  }
 }
 
 function isUnsafeMethod(method: string) {
   return !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method.toUpperCase())
+}
+
+async function readResponseData(response: Response) {
+  const contentType = response.headers.get('content-type') ?? ''
+  return contentType.includes('application/json') ? await response.json() : await response.text()
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -67,8 +76,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     return undefined as T
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-  const data = contentType.includes('application/json') ? await response.json() : await response.text()
+  const data = await readResponseData(response)
 
   if (!response.ok) {
     throw new ApiError(response.status, data)

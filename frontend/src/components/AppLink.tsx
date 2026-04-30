@@ -13,6 +13,17 @@ export function AppLink({
   children: ReactNode
 }) {
   function onClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return
+    }
+
     event.preventDefault()
     navigate(to)
   }

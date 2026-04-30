@@ -1,5 +1,5 @@
-import type { Navigate } from '../types'
 import { MessagePage } from './MessagePage'
+import type { Navigate } from '../types'
 
 export function LoginRequiredPage({ navigate }: { navigate: Navigate }) {
   return (

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { apiFetch } from '../api'
-import type { Navigate, SetAuth, User } from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { AppLink } from './AppLink'
-import { AuthPanel } from './AuthPanel'
+import { AppLink } from '../../components/AppLink'
+import { AuthPanel } from './components/AuthPanel'
+import { apiFetch } from '../../lib/api'
+import type { Navigate, SetAuth, User } from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
 
 export function LoginPage({ setAuth, navigate }: { setAuth: SetAuth; navigate: Navigate }) {
   const [login, setLogin] = useState('')

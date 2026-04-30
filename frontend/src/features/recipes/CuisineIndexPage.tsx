@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../api'
-import type { Cuisine, Navigate } from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { MessagePage } from './MessagePage'
+import { MessagePage } from '../../components/MessagePage'
+import { apiFetch } from '../../lib/api'
+import type { Cuisine, Navigate } from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
 
 export function CuisineIndexPage({ navigate }: { navigate: Navigate }) {
   const [cuisines, setCuisines] = useState<Cuisine[]>([])

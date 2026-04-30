@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../api'
-import type { Navigate, Recipe } from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { titleize } from '../utils/titleize'
-import { MessagePage } from './MessagePage'
-import { RecipeGrid } from './RecipeGrid'
+import { MessagePage } from '../../components/MessagePage'
+import { RecipeGrid } from './components/RecipeGrid'
+import { apiFetch } from '../../lib/api'
+import type { Navigate, Recipe } from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
+import { titleize } from '../../utils/titleize'
 
 export function CuisinePage({ cuisine, navigate }: { cuisine: string; navigate: Navigate }) {
   const [recipes, setRecipes] = useState<Recipe[]>([])

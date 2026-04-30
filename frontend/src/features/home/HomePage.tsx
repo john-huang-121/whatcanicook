@@ -1,5 +1,5 @@
-import type { AuthState, Navigate } from '../types'
-import { AppLink } from './AppLink'
+import { AppLink } from '../../components/AppLink'
+import type { AuthState, Navigate } from '../../types'
 
 export function HomePage({ auth, navigate }: { auth: AuthState; navigate: Navigate }) {
   return (

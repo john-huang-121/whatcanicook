@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import '../App.css'
-import { apiFetch } from '../api'
+import './app.css'
+import { MessagePage } from '../components/MessagePage'
+import { Navbar } from '../components/Navbar'
 import { usePath } from '../hooks/usePath'
+import { apiFetch } from '../lib/api'
 import type { AuthResponse, AuthState } from '../types'
 import { formatErrors } from '../utils/formatErrors'
-import { MessagePage } from './MessagePage'
-import { Navbar } from './Navbar'
-import { RouteSwitch } from './RouteSwitch'
+import { AppRouter } from './router'
 
 export function App() {
   const { path, navigate } = usePath()
@@ -49,7 +49,7 @@ export function App() {
         {authError ? (
           <MessagePage title="Session unavailable" message={authError} navigate={navigate} />
         ) : (
-          <RouteSwitch path={path} auth={auth} setAuth={setAuth} navigate={navigate} />
+          <AppRouter path={path} auth={auth} setAuth={setAuth} navigate={navigate} />
         )}
       </main>
     </div>

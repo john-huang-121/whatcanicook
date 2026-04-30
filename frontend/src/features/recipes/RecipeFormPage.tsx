@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { apiFetch } from '../api'
+import { LoginRequiredPage } from '../../components/LoginRequiredPage'
+import { apiFetch } from '../../lib/api'
 import type {
   AuthState,
   Cuisine,
@@ -9,9 +10,8 @@ import type {
   RecipeIngredientInput,
   RecipeInstructionInput,
   RecipePayload,
-} from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { LoginRequiredPage } from './LoginRequiredPage'
+} from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
 
 type RecipeFormState = {
   title: string

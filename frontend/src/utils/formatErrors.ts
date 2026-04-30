@@ -1,4 +1,4 @@
-import { ApiError } from '../api'
+import { ApiError } from '../lib/api'
 
 export function formatErrors(error: unknown) {
   if (error instanceof ApiError) {

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { apiFetch } from '../api'
-import type { AuthState, Navigate, Profile, Recipe, SetAuth } from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { LoadingPage } from './LoadingPage'
-import { LoginRequiredPage } from './LoginRequiredPage'
-import { ProfileRecipeSection } from './ProfileRecipeSection'
+import { LoadingPage } from '../../components/LoadingPage'
+import { LoginRequiredPage } from '../../components/LoginRequiredPage'
+import { MessagePage } from '../../components/MessagePage'
+import { ProfileRecipeSection } from './components/ProfileRecipeSection'
+import { apiFetch } from '../../lib/api'
+import type { AuthState, Navigate, Profile, Recipe, SetAuth } from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
 
 export function ProfilePage({
   auth,
@@ -61,6 +62,10 @@ export function ProfilePage({
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
+  }
+
+  if (error && !profile) {
+    return <MessagePage title="Profile unavailable" message={error} navigate={navigate} />
   }
 
   if (!profile || !auth.user) {

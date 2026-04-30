@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { apiFetch } from '../api'
-import type { AuthState, Navigate, Recipe } from '../types'
-import { formatErrors } from '../utils/formatErrors'
-import { LoginRequiredPage } from './LoginRequiredPage'
+import { apiFetch } from '../../lib/api'
+import type { AuthState, Navigate, Recipe } from '../../types'
+import { formatErrors } from '../../utils/formatErrors'
+import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 
 export function DeleteRecipePage({ auth, navigate, recipeId }: { auth: AuthState; navigate: Navigate; recipeId: number }) {
   const [recipe, setRecipe] = useState<Recipe | null>(null)

@@ -1,5 +1,5 @@
-import { recipeImage } from '../constants'
-import type { Navigate, Recipe } from '../types'
+import { recipeImage } from '../../../config/constants'
+import type { Navigate, Recipe } from '../../../types'
 
 export function RecipeGrid({ recipes, navigate }: { recipes: Recipe[]; navigate: Navigate }) {
   return (

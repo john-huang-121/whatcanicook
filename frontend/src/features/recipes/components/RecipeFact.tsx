@@ -1,4 +1,4 @@
-export function Fact({ label, value }: { label: string; value: string }) {
+export function RecipeFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <h3>{label}</h3>

@@ -1,16 +1,16 @@
 import type { AuthState, Navigate, SetAuth } from '../types'
-import { CuisineIndexPage } from './CuisineIndexPage'
-import { CuisinePage } from './CuisinePage'
-import { DeleteRecipePage } from './DeleteRecipePage'
-import { HomePage } from './HomePage'
-import { LoginPage } from './LoginPage'
-import { NotFoundPage } from './NotFoundPage'
-import { ProfilePage } from './ProfilePage'
-import { RecipeDetailPage } from './RecipeDetailPage'
-import { RecipeFormPage } from './RecipeFormPage'
-import { SignupPage } from './SignupPage'
+import { LoginPage } from '../features/auth/LoginPage'
+import { SignupPage } from '../features/auth/SignupPage'
+import { HomePage } from '../features/home/HomePage'
+import { ProfilePage } from '../features/profile/ProfilePage'
+import { CuisineIndexPage } from '../features/recipes/CuisineIndexPage'
+import { CuisinePage } from '../features/recipes/CuisinePage'
+import { DeleteRecipePage } from '../features/recipes/DeleteRecipePage'
+import { RecipeDetailPage } from '../features/recipes/RecipeDetailPage'
+import { RecipeFormPage } from '../features/recipes/RecipeFormPage'
+import { NotFoundPage } from '../components/NotFoundPage'
 
-export function RouteSwitch({
+export function AppRouter({
   path,
   auth,
   setAuth,

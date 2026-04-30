@@ -1,4 +1,4 @@
-import type { Navigate, Recipe } from '../types'
+import type { Navigate, Recipe } from '../../../types'
 
 export function ProfileRecipeSection({ title, recipes, navigate }: { title: string; recipes: Recipe[]; navigate: Navigate }) {
   return (
