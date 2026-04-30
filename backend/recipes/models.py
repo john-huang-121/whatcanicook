@@ -56,7 +56,6 @@ class Recipe(models.Model):
     )
     cook_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
-    instructions = models.TextField()
     cuisine = models.CharField(
         max_length=20,
         choices=Cuisine.choices,
@@ -72,6 +71,12 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         'Ingredient',
         through='RecipeIngredient',
+        related_name='recipes',
+        blank=True,
+    )
+    instructions = models.ManyToManyField(
+        'Instruction',
+        through='RecipeInstruction',
         related_name='recipes',
         blank=True,
     )
@@ -103,6 +108,12 @@ class Ingredient(models.Model):
     
     def find_all_ingredient_recipes(self):
         return self.recipes.all()
+
+class Instruction(models.Model):
+    text = models.TextField()
+
+    def __str__(self):
+        return self.text[:80]
          
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients')
@@ -116,3 +127,20 @@ class RecipeIngredient(models.Model):
             parts.append(self.unit)
         parts.append(self.ingredient.name)
         return " ".join(parts)
+
+class RecipeInstruction(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_instructions')
+    instruction = models.ForeignKey(Instruction, on_delete=models.CASCADE, related_name='recipe_instructions')
+    step_number = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ["step_number", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipe", "step_number"],
+                name="unique_recipe_instruction_step",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.step_number}. {self.instruction.text}"

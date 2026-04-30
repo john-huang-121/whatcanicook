@@ -1,31 +1,39 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { apiFetch } from '../api'
-import type { AuthState, Cuisine, Navigate, Recipe, RecipeIngredientInput, RecipePayload } from '../types'
+import type {
+  AuthState,
+  Cuisine,
+  Navigate,
+  Recipe,
+  RecipeIngredientInput,
+  RecipeInstructionInput,
+  RecipePayload,
+} from '../types'
 import { formatErrors } from '../utils/formatErrors'
 import { LoginRequiredPage } from './LoginRequiredPage'
 
 type RecipeFormState = {
   title: string
   description: string
-  instructions: string
   prep_time: string
   cook_time: string
   servings: string
   cuisine: string
   is_public: boolean
+  instruction_items: RecipeInstructionInput[]
   ingredient_items: RecipeIngredientInput[]
 }
 
 const emptyRecipeForm: RecipeFormState = {
   title: '',
   description: '',
-  instructions: '',
   prep_time: '',
   cook_time: '',
   servings: '',
   cuisine: 'american',
   is_public: true,
+  instruction_items: [{ text: '' }],
   ingredient_items: [{ name: '', quantity: '', unit: '' }],
 }
 
@@ -33,12 +41,16 @@ function recipeToForm(recipe: Recipe): RecipeFormState {
   return {
     title: recipe.title,
     description: recipe.description,
-    instructions: recipe.instructions,
     prep_time: recipe.prep_time?.toString() ?? '',
     cook_time: recipe.cook_time.toString(),
     servings: recipe.servings.toString(),
     cuisine: recipe.cuisine,
     is_public: recipe.is_public,
+    instruction_items: recipe.instructions.length
+      ? recipe.instructions.map((item) => ({
+          text: item.text,
+        }))
+      : [{ text: '' }],
     ingredient_items: recipe.ingredients.length
       ? recipe.ingredients.map((item) => ({
           name: item.name,
@@ -113,6 +125,29 @@ export function RecipeFormPage({
     }))
   }
 
+  function updateInstruction(index: number, value: string) {
+    setForm((current) => ({
+      ...current,
+      instruction_items: current.instruction_items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, text: value } : item,
+      ),
+    }))
+  }
+
+  function addInstruction() {
+    setForm((current) => ({
+      ...current,
+      instruction_items: [...current.instruction_items, { text: '' }],
+    }))
+  }
+
+  function removeInstruction(index: number) {
+    setForm((current) => ({
+      ...current,
+      instruction_items: current.instruction_items.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
   function addIngredient() {
     setForm((current) => ({
       ...current,
@@ -131,12 +166,16 @@ export function RecipeFormPage({
     return {
       title: form.title,
       description: form.description,
-      instructions: form.instructions,
       prep_time: form.prep_time ? Number(form.prep_time) : null,
       cook_time: Number(form.cook_time),
       servings: Number(form.servings),
       cuisine: form.cuisine,
       is_public: form.is_public,
+      instruction_items: form.instruction_items
+        .filter((item) => item.text.trim())
+        .map((item) => ({
+          text: item.text.trim(),
+        })),
       ingredient_items: form.ingredient_items
         .filter((item) => item.name.trim() && item.quantity)
         .map((item) => ({
@@ -174,14 +213,6 @@ export function RecipeFormPage({
           <label>
             Description
             <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-          </label>
-          <label>
-            Instructions
-            <textarea
-              value={form.instructions}
-              onChange={(event) => setForm({ ...form, instructions: event.target.value })}
-              required
-            />
           </label>
           <div className="form-grid">
             <label>
@@ -236,13 +267,10 @@ export function RecipeFormPage({
           <section className="content-section">
             <div className="form-section-header">
               <h2>Ingredients</h2>
-              <button type="button" className="secondary-button" onClick={addIngredient}>
-                Add ingredient
-              </button>
             </div>
             <div className="ingredient-editor">
               {form.ingredient_items.map((item, index) => (
-                <div className="ingredient-row" key={`${index}-${item.name}`}>
+                <div className="ingredient-row" key={`ingredient-${index}`}>
                   <input
                     aria-label="Ingredient name"
                     placeholder="Ingredient"
@@ -269,6 +297,39 @@ export function RecipeFormPage({
                   </button>
                 </div>
               ))}
+              <button type="button" className="secondary-button" onClick={addIngredient}>
+                Add ingredient
+              </button>
+            </div>
+          </section>
+
+          <section className="content-section">
+            <div className="form-section-header">
+              <h2>Instructions</h2>
+            </div>
+            <div className="instruction-editor">
+              {form.instruction_items.map((item, index) => (
+                <div className="instruction-row" key={`instruction-${index}`}>
+                  <span className="step-number">{index + 1}</span>
+                  <textarea
+                    aria-label={`Instruction step ${index + 1}`}
+                    placeholder="Describe this step"
+                    value={item.text}
+                    onChange={(event) => updateInstruction(index, event.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeInstruction(index)}
+                    disabled={form.instruction_items.length === 1}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button type="button" className="secondary-button" onClick={addInstruction}>
+                Add instruction step
+              </button>
             </div>
           </section>
 

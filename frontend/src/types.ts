@@ -53,6 +53,16 @@ export type RecipeIngredientInput = {
   unit: string
 }
 
+export type RecipeInstruction = {
+  id: number
+  text: string
+  step_number: number
+}
+
+export type RecipeInstructionInput = {
+  text: string
+}
+
 export type Recipe = {
   id: number
   title: string
@@ -60,7 +70,7 @@ export type Recipe = {
   prep_time: number | null
   cook_time: number
   servings: number
-  instructions: string
+  instructions: RecipeInstruction[]
   cuisine: string
   cuisine_label: string
   created_by: number
@@ -80,9 +90,11 @@ export type RecipePayload = {
   prep_time: number | null
   cook_time: number
   servings: number
-  instructions: string
   cuisine: string
   is_public: boolean
+  instruction_items: Array<{
+    text: string
+  }>
   ingredient_items: Array<{
     name: string
     quantity: number

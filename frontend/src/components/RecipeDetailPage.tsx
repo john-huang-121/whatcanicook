@@ -87,7 +87,15 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
 
           <section className="content-section">
             <h2>Instructions</h2>
-            <p className="pre-line">{recipe.instructions}</p>
+            {recipe.instructions.length ? (
+              <ol className="instruction-list">
+                {recipe.instructions.map((item) => (
+                  <li key={item.id}>{item.text}</li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">No instructions listed yet.</p>
+            )}
           </section>
         </div>
       </div>

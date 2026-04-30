@@ -11,7 +11,7 @@ def visible_recipes_for(user):
     return (
         Recipe.objects.visible_to(user)
         .select_related("created_by")
-        .prefetch_related("recipe_ingredients__ingredient")
+        .prefetch_related("recipe_ingredients__ingredient", "recipe_instructions__instruction")
     )
 
 
@@ -80,7 +80,10 @@ class RecipeDetailView(APIView):
 
     def get_owned_object(self, request, recipe_id):
         recipe = get_object_or_404(
-            Recipe.objects.select_related("created_by").prefetch_related("recipe_ingredients__ingredient"),
+            Recipe.objects.select_related("created_by").prefetch_related(
+                "recipe_ingredients__ingredient",
+                "recipe_instructions__instruction",
+            ),
             pk=recipe_id,
         )
         if not recipe.can_edit(request.user):

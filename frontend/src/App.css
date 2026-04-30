@@ -432,15 +432,22 @@ p {
   padding: 0;
 }
 
-.ingredient-list li {
+.ingredient-list li,
+.instruction-list li {
   border: 1px solid #f3f4f6;
   border-radius: 0.5rem;
   padding: 0.8rem 1rem;
 }
 
-.pre-line {
+.instruction-list {
+  display: grid;
+  gap: 0.6rem;
+  padding-left: 1.4rem;
+}
+
+.instruction-list li {
   color: #374151;
-  white-space: pre-line;
+  padding-left: 0.35rem;
 }
 
 .form-shell,
@@ -516,7 +523,8 @@ textarea {
   margin-bottom: 0.8rem;
 }
 
-.ingredient-editor {
+.ingredient-editor,
+.instruction-editor {
   display: grid;
   gap: 0.75rem;
 }
@@ -540,6 +548,44 @@ textarea {
 .ingredient-row button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.instruction-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.instruction-row textarea {
+  min-height: 5.5rem;
+}
+
+.instruction-row button {
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #b91c1c;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.68rem 0.75rem;
+}
+
+.instruction-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.step-number {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 800;
 }
 
 .auth-band {
@@ -626,7 +672,8 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .ingredient-row {
+  .ingredient-row,
+  .instruction-row {
     grid-template-columns: 1fr;
   }
 }
