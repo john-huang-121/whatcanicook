@@ -25,6 +25,16 @@ export type AuthResponse = {
   user: User | null
 }
 
+export type AuthState = {
+  loading: boolean
+  authenticated: boolean
+  user: User | null
+}
+
+export type SetAuth = (auth: AuthState) => void
+
+export type Navigate = (to: string) => void
+
 export type Cuisine = {
   value: string
   label: string
