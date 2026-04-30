@@ -21,10 +21,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('allauth.urls')),
-    path('accounts/', include('accounts.urls', namespace='accounts')),
-    path('', include('splash.urls', namespace='splash')),
-    path('recipes/', include('recipes.urls', namespace='recipes'))
+    path('api/auth/', include('accounts.urls', namespace='accounts')),
+    path('api/', include('recipes.urls', namespace='recipes')),
 ]
 
 if settings.DEBUG:

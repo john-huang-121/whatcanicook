@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 
-from ..models import Recipe, RecipeIngredient, Ingredient, Cuisine
+from ..models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction
 
 User = get_user_model()
 
@@ -28,7 +28,6 @@ class RecipeModelTests(TestCase):
         self.recipe1 = Recipe.objects.create(
             title="Scrambled Eggs",
             description="Simple scrambled eggs",
-            instructions="Beat eggs, cook in pan with salt.",
             prep_time=2,
             cook_time=5,
             servings=1,
@@ -39,7 +38,6 @@ class RecipeModelTests(TestCase):
         self.recipe2 = Recipe.objects.create(
             title="Salted Pasta",
             description="Just salty pasta water",
-            instructions="Boil water, add salt and pasta.",
             cook_time=10,
             servings=2,
             cuisine=Cuisine.ITALIAN,
@@ -49,7 +47,6 @@ class RecipeModelTests(TestCase):
         self.private_recipe = Recipe.objects.create(
             title="Secret Soup",
             description="Hidden recipe",
-            instructions="Keep it quiet.",
             prep_time=5,
             cook_time=20,
             servings=4,
@@ -62,6 +59,15 @@ class RecipeModelTests(TestCase):
         RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.eggs, quantity=2, unit="pcs")
         RecipeIngredient.objects.create(recipe=self.recipe1, ingredient=self.salt, quantity=0.5, unit="tsp")
         RecipeIngredient.objects.create(recipe=self.recipe2, ingredient=self.salt, quantity=1, unit="tbsp")
+
+        beat_eggs = Instruction.objects.create(text="Beat eggs.")
+        cook_eggs = Instruction.objects.create(text="Cook in pan with salt.")
+        boil_water = Instruction.objects.create(text="Boil water.")
+        keep_secret = Instruction.objects.create(text="Keep it quiet.")
+        RecipeInstruction.objects.create(recipe=self.recipe1, instruction=beat_eggs, step_number=1)
+        RecipeInstruction.objects.create(recipe=self.recipe1, instruction=cook_eggs, step_number=2)
+        RecipeInstruction.objects.create(recipe=self.recipe2, instruction=boil_water, step_number=1)
+        RecipeInstruction.objects.create(recipe=self.private_recipe, instruction=keep_secret, step_number=1)
 
     def test_recipe_str(self):
         self.assertEqual(str(self.recipe1), "Scrambled Eggs")
@@ -86,6 +92,12 @@ class RecipeModelTests(TestCase):
         recipe1_ingredients = set(self.recipe1.ingredients.values_list("name", flat=True))
         self.assertEqual(recipe1_ingredients, {"Eggs", "Salt"})
 
+    def test_recipe_instructions_many_to_many(self):
+        recipe1_instructions = list(
+            self.recipe1.recipe_instructions.values_list("instruction__text", flat=True)
+        )
+        self.assertEqual(recipe1_instructions, ["Beat eggs.", "Cook in pan with salt."])
+
     def test_total_time(self):
         self.assertEqual(self.recipe1.total_time(), 7)
         self.assertEqual(self.recipe2.total_time(), 10)
@@ -103,3 +115,7 @@ class RecipeModelTests(TestCase):
     def test_recipeingredient_str(self):
         ri = RecipeIngredient.objects.get(recipe=self.recipe1, ingredient=self.salt)
         self.assertEqual(str(ri), "0.5 tsp Salt")
+
+    def test_recipeinstruction_str(self):
+        recipe_instruction = RecipeInstruction.objects.get(recipe=self.recipe1, step_number=1)
+        self.assertEqual(str(recipe_instruction), "1. Beat eggs.")
