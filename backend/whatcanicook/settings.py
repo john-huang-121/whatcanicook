@@ -138,8 +138,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-STATICFILES_DIRS = [BASE_DIR / "project_static"]
-
 # for production collectstatic
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
