@@ -1,13 +1,22 @@
-# whatcanicook
-A recipe app built in Django
+# whatcanicook backend
+
+Django REST API for the WhatCanICook React frontend.
 
 ## for dev
 
-```
-./tailwindcss -i project_static/css/input.css -o ./project_static/css/output.css --watch
+Run the API:
+
+```powershell
+.\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-add `--minify` for prod.
+Run tests:
+
+```powershell
+.\venv\Scripts\python.exe manage.py test
+```
+
+The React app lives in `../frontend` and proxies `/api` and `/media` to this server.
 
 ## Use AI?
 https://huggingface.co/blog/welcome-openai-gpt-oss

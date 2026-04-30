@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-8etsqcp(98k6@at@t7^%un@t%vpc9gupp0)h2^cq38#gu0eaey
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -36,12 +36,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',
+    'rest_framework',
     'accounts.apps.AccountsConfig',
-    'splash.apps.SplashConfig',
     'recipes.apps.RecipesConfig',
-    'allauth',
-    'allauth.account',
 ]
 
 MIDDLEWARE = [
@@ -52,7 +49,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = 'whatcanicook.urls'
@@ -60,7 +56,7 @@ ROOT_URLCONF = 'whatcanicook.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'project_templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -104,22 +100,26 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# All-Auth
-# https://docs.allauth.org/en/latest/installation/quickstart.html
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SITE_ID = 1
-LOGIN_URL = 'account_login'
-LOGIN_REDIRECT_URL = 'accounts:profile'
-ACCOUNT_LOGOUT_REDIRECT_URL = 'splash:homepage'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-ACCOUNT_LOGIN_METHODS = {'email', 'username'}
-ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'password1*', 'password2*']
-ACCOUNT_EMAIL_VERIFICATION = 'none'
-ACCOUNT_FORMS = {'signup': 'accounts.forms.UserSignupForm'}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

@@ -5,10 +5,8 @@ from . import views
 app_name = 'recipes'
 
 urlpatterns = [
-    path("", views.cuisine_index, name="cuisine_index"),
-    path("cuisine/<str:cuisine_type>/", views.cuisine, name="cuisine"),
-    path("<int:recipe_id>/", views.detail, name="detail"),
-    path("new/", views.create, name="create"),
-    path("<int:recipe_id>/edit", views.update, name="update"),
-    path("<int:recipe_id>/delete", views.delete, name="delete"),
+    path("cuisines/", views.CuisineListView.as_view(), name="cuisine-list"),
+    path("ingredients/", views.IngredientListView.as_view(), name="ingredient-list"),
+    path("recipes/", views.RecipeListView.as_view(), name="recipe-list"),
+    path("recipes/<int:recipe_id>/", views.RecipeDetailView.as_view(), name="recipe-detail"),
 ]

@@ -1,91 +1,134 @@
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
+from rest_framework import permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import Recipe, Cuisine
-from .forms import RecipeForm, RecipeIngredientFormSet
+from .models import Cuisine, Ingredient, Recipe
+from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer
 
 
 def visible_recipes_for(user):
-    return Recipe.objects.visible_to(user).select_related("created_by")
-
-
-def get_owned_recipe_or_404(user, recipe_id):
-    return get_object_or_404(
-        Recipe.objects.select_related("created_by"),
-        pk=recipe_id,
-        created_by=user,
+    return (
+        Recipe.objects.visible_to(user)
+        .select_related("created_by")
+        .prefetch_related("recipe_ingredients__ingredient")
     )
 
 
-def cuisine_index(request):
-    cuisines_list = [choice.label for choice in Cuisine]
-    context = {'cuisines_list': cuisines_list}
+class CuisineListView(APIView):
+    permission_classes = [permissions.AllowAny]
 
-    return render(request, 'recipes/cuisine_index.html', context)
+    def get(self, request):
+        cuisines = [{"value": choice.value, "label": choice.label} for choice in Cuisine]
+        serializer = CuisineSerializer(cuisines, many=True)
+        return Response(serializer.data)
 
-def cuisine(request, cuisine_type):
-    cuisine_list = visible_recipes_for(request.user).filter(cuisine=cuisine_type).order_by("-created_at")
-    context = {'cuisine_list': cuisine_list, 'cuisine_type': cuisine_type.title()}
 
-    return render(request, 'recipes/cuisine.html', context)
+class IngredientListView(APIView):
+    permission_classes = [permissions.AllowAny]
 
-def detail(request, recipe_id):
-    recipe = get_object_or_404(visible_recipes_for(request.user), pk=recipe_id)
+    def get(self, request):
+        ingredients = Ingredient.objects.order_by("name")
+        serializer = IngredientSerializer(ingredients, many=True)
+        return Response(serializer.data)
 
-    return render(request, 'recipes/detail.html', {'recipe': recipe})
 
-@login_required
-def create(request):
-    form = RecipeForm(request.POST or None)
-    formset = RecipeIngredientFormSet(request.POST or None)
+class RecipeListView(APIView):
+    permission_classes = [permissions.AllowAny]
 
-    if form.is_valid() and formset.is_valid():
-        with transaction.atomic():
-            recipe = form.save(commit=False)
-            recipe.created_by = request.user
-            recipe.save()
-            formset.instance = recipe
-            formset.save()
-        return redirect('recipes:detail', recipe_id=recipe.id)
+    def get_queryset(self, request):
+        queryset = visible_recipes_for(request.user).order_by("-created_at")
 
-    return render(request, 'recipes/create.html', {
-        'form': form,
-        'formset': formset,
-        'page_title': 'Create Recipe',
-        'submit_label': 'Create Recipe',
-    })
+        cuisine = request.query_params.get("cuisine")
+        if cuisine:
+            queryset = queryset.filter(cuisine=cuisine)
 
-@login_required
-def update(request, recipe_id):
-    obj = get_owned_recipe_or_404(request.user, recipe_id)
+        mine = request.query_params.get("mine")
+        if mine in {"1", "true", "True"}:
+            if not request.user.is_authenticated:
+                return Recipe.objects.none()
+            queryset = queryset.filter(created_by=request.user)
 
-    form = RecipeForm(request.POST or None, instance=obj)
-    formset = RecipeIngredientFormSet(request.POST or None, instance=obj)
+        return queryset
 
-    if form.is_valid() and formset.is_valid():
-        with transaction.atomic():
-            form.save()
-            formset.save()
-        return redirect('recipes:detail', recipe_id=recipe_id)
+    def get(self, request):
+        serializer = RecipeSerializer(
+            self.get_queryset(request),
+            many=True,
+            context={"request": request},
+        )
+        return Response(serializer.data)
 
-    context = {
-        'form': form,
-        'formset': formset,
-        'page_title': 'Update Recipe',
-        'submit_label': 'Save Changes',
-        'recipe': obj,
-    }
-    return render(request, 'recipes/create.html', context)
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=401)
 
-@login_required
-def delete(request, recipe_id):
-    obj = get_owned_recipe_or_404(request.user, recipe_id)
+        serializer = RecipeSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save(created_by=request.user)
+        return Response(
+            RecipeSerializer(recipe, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
-    if request.method == 'POST':
-        obj.delete()
 
-        return redirect('recipes:cuisine_index')
-    
-    context = {'recipe': obj}
-    return render(request, 'recipes/delete.html', context)
+class RecipeDetailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get_object(self, request, recipe_id):
+        return get_object_or_404(visible_recipes_for(request.user), pk=recipe_id)
+
+    def get_owned_object(self, request, recipe_id):
+        recipe = get_object_or_404(
+            Recipe.objects.select_related("created_by").prefetch_related("recipe_ingredients__ingredient"),
+            pk=recipe_id,
+        )
+        if not recipe.can_edit(request.user):
+            return None
+        return recipe
+
+    def get(self, request, recipe_id):
+        recipe = self.get_object(request, recipe_id)
+        return Response(RecipeSerializer(recipe, context={"request": request}).data)
+
+    def patch(self, request, recipe_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=401)
+
+        recipe = self.get_owned_object(request, recipe_id)
+        if recipe is None:
+            return Response({"detail": "You do not have permission to edit this recipe."}, status=403)
+
+        serializer = RecipeSerializer(
+            recipe,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save()
+        return Response(RecipeSerializer(recipe, context={"request": request}).data)
+
+    def put(self, request, recipe_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=401)
+
+        recipe = self.get_owned_object(request, recipe_id)
+        if recipe is None:
+            return Response({"detail": "You do not have permission to edit this recipe."}, status=403)
+
+        serializer = RecipeSerializer(recipe, data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        recipe = serializer.save()
+        return Response(RecipeSerializer(recipe, context={"request": request}).data)
+
+    def delete(self, request, recipe_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=401)
+
+        recipe = self.get_owned_object(request, recipe_id)
+        if recipe is None:
+            return Response({"detail": "You do not have permission to delete this recipe."}, status=403)
+
+        recipe.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

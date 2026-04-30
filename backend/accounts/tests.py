@@ -2,15 +2,12 @@ from django.contrib.auth import SESSION_KEY, get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from allauth.account.forms import LoginForm
-
-from .forms import UserSignupForm
 from .models import Profile
 
 User = get_user_model()
 
 
-class SignupTests(TestCase):
+class SignupApiTests(TestCase):
     def signup_data(self, **overrides):
         data = {
             "username": "jane",
@@ -23,46 +20,36 @@ class SignupTests(TestCase):
         data.update(overrides)
         return data
 
-    def test_signup_page_uses_custom_form(self):
-        response = self.client.get(reverse("account_signup"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "account/signup.html")
-        self.assertIsInstance(response.context["form"], UserSignupForm)
-        self.assertEqual(
-            list(response.context["form"].fields),
-            ["username", "email", "first_name", "last_name", "password1", "password2"],
+    def test_signup_creates_user_profile_and_session(self):
+        response = self.client.post(
+            reverse("accounts:signup"),
+            self.signup_data(),
+            content_type="application/json",
         )
 
-    def test_signup_creates_user_with_trimmed_name_fields(self):
-        response = self.client.post(reverse("account_signup"), self.signup_data())
-
         user = User.objects.get(username="jane")
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["username"], "jane")
         self.assertEqual(user.email, "jane@example.com")
-        user_field_names = {field.name for field in User._meta.get_fields()}
-        self.assertNotIn("first_name", user_field_names)
-        self.assertNotIn("last_name", user_field_names)
-        self.assertIsNotNone(user.created_at)
-        self.assertIsNotNone(user.updated_at)
         self.assertEqual(user.profile.first_name, "Jane")
         self.assertEqual(user.profile.last_name, "Doe")
         self.assertTrue(user.check_password("testpass123"))
+        self.assertEqual(int(self.client.session[SESSION_KEY]), user.id)
 
     def test_signup_requires_name_fields(self):
         response = self.client.post(
-            reverse("account_signup"),
+            reverse("accounts:signup"),
             self.signup_data(first_name="", last_name=""),
+            content_type="application/json",
         )
 
-        form = response.context["form"]
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("first_name", form.errors)
-        self.assertIn("last_name", form.errors)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("first_name", response.json())
+        self.assertIn("last_name", response.json())
         self.assertFalse(User.objects.exists())
 
 
-class LoginTests(TestCase):
+class LoginApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username="jane",
@@ -78,44 +65,47 @@ class LoginTests(TestCase):
         data.update(overrides)
         return data
 
-    def test_login_page_uses_allauth_template(self):
-        response = self.client.get(reverse("account_login"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "account/login.html")
-        self.assertIsInstance(response.context["form"], LoginForm)
-        self.assertEqual(list(response.context["form"].fields), ["login", "password", "remember"])
-        self.assertContains(response, reverse("account_signup"))
-
     def test_user_can_login_with_username(self):
-        response = self.client.post(reverse("account_login"), self.login_data())
-
-        self.assertRedirects(response, reverse("accounts:profile"))
-        self.assertEqual(int(self.client.session[SESSION_KEY]), self.user.id)
-
-    def test_login_redirects_to_next_url(self):
-        next_url = reverse("recipes:create")
-
         response = self.client.post(
-            reverse("account_login"),
-            self.login_data(next=next_url),
+            reverse("accounts:login"),
+            self.login_data(),
+            content_type="application/json",
         )
 
-        self.assertRedirects(response, next_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], "jane")
+        self.assertEqual(int(self.client.session[SESSION_KEY]), self.user.id)
+
+    def test_user_can_login_with_email(self):
+        response = self.client.post(
+            reverse("accounts:login"),
+            self.login_data(login="jane@example.com"),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(int(self.client.session[SESSION_KEY]), self.user.id)
 
     def test_invalid_login_does_not_authenticate_user(self):
         response = self.client.post(
-            reverse("account_login"),
+            reverse("accounts:login"),
             self.login_data(password="wrongpass"),
+            content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context["form"].errors)
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_logout_clears_session(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.post(reverse("accounts:logout"))
+
+        self.assertEqual(response.status_code, 204)
         self.assertNotIn(SESSION_KEY, self.client.session)
 
 
-class ProfileTests(TestCase):
+class ProfileApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username="jane",
@@ -123,20 +113,23 @@ class ProfileTests(TestCase):
             password="testpass123",
         )
 
-    def test_profile_is_created_for_new_user(self):
-        self.assertTrue(Profile.objects.filter(user=self.user).exists())
-
-    def test_profile_page_displays_profile_name(self):
-        self.user.profile.first_name = "Jane"
-        self.user.profile.last_name = "Doe"
-        self.user.profile.save()
-        self.client.login(username="jane", password="testpass123")
-
-        response = self.client.get(reverse("accounts:profile"))
+    def test_me_reports_anonymous_user(self):
+        response = self.client.get(reverse("accounts:me"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Jane Doe")
-        self.assertContains(response, "Edit your profile")
+        self.assertFalse(response.json()["authenticated"])
+
+    def test_me_reports_authenticated_user(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.get(reverse("accounts:me"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["authenticated"])
+        self.assertEqual(response.json()["user"]["username"], "jane")
+
+    def test_profile_is_created_for_new_user(self):
+        self.assertTrue(Profile.objects.filter(user=self.user).exists())
 
     def test_user_name_helpers_use_profile(self):
         self.user.profile.first_name = "Jane"
@@ -149,7 +142,7 @@ class ProfileTests(TestCase):
     def test_user_can_update_profile_fields(self):
         self.client.login(username="jane", password="testpass123")
 
-        response = self.client.post(
+        response = self.client.patch(
             reverse("accounts:profile"),
             {
                 "first_name": "Janet",
@@ -160,9 +153,10 @@ class ProfileTests(TestCase):
                 "linkedin_url": "https://linkedin.com/in/janetcook",
                 "birth_date": "1990-05-01",
             },
+            content_type="application/json",
         )
 
-        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertEqual(response.status_code, 200)
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.first_name, "Janet")
         self.assertEqual(self.user.profile.last_name, "Cook")
