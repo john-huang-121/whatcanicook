@@ -38,31 +38,6 @@ const emptyRecipeForm: RecipeFormState = {
   ingredient_items: [{ name: '', quantity: '', unit: '', note: '' }],
 }
 
-const unitValueAliases: Record<string, string> = {
-  tsp: 'teaspoon(s)',
-  'tsp.': 'teaspoon(s)',
-  tbsp: 'tablespoon(s)',
-  'tbsp.': 'tablespoon(s)',
-  fl_oz: 'fluid ounce(s)',
-  'fl oz': 'fluid ounce(s)',
-  'fl. oz.': 'fluid ounce(s)',
-  ml: 'milliliter(s)',
-  l: 'liter(s)',
-  oz: 'ounce(s)',
-  lb: 'pound(s)',
-  g: 'gram(s)',
-  kg: 'kilogram(s)',
-  to_taste: 'to taste',
-}
-
-function unitLabelWithoutPluralHint(label: string) {
-  return label.replace(/\((s|es)\)/g, '').toLowerCase()
-}
-
-function pluralizedUnitLabel(label: string) {
-  return label.replace(/\(s\)/g, 's').replace(/\(es\)/g, 'es').toLowerCase()
-}
-
 function recipeToForm(recipe: Recipe): RecipeFormState {
   return {
     title: recipe.title,
@@ -103,38 +78,49 @@ export function RecipeFormPage({
   const [error, setError] = useState('')
   const editing = recipeId !== undefined
 
+  // Fetch cuisines and unit options on mount
   useEffect(() => {
     let active = true
 
-    Promise.all([apiFetch<Cuisine[]>('/api/cuisines/'), apiFetch<RecipeUnit[]>('/api/units/')])
-      .then(([cuisineResponse, unitResponse]) => {
+    const fetchCuisinesAndUnitsList = async () => {
+      try {
+        const [cuisineResponse, unitResponse] = await Promise.all([
+          apiFetch<Cuisine[]>('/api/cuisines/'),
+          apiFetch<RecipeUnit[]>('/api/units/'),
+        ])
         if (!active) return
         setCuisines(cuisineResponse)
         setUnitOptions(unitResponse)
-      })
-      .catch((requestError) => {
+      } catch (requestError) {
         if (!active) return
         setError(formatErrors(requestError))
-      })
+      }
+    }
+
+    fetchCuisinesAndUnitsList()
 
     return () => {
       active = false
     }
   }, [])
 
+  // Fetch recipe data if editing an existing recipe
   useEffect(() => {
     if (!recipeId) return
     let active = true
 
-    apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
-      .then((recipe) => {
+    const fetchRecipeById = async () => {
+      try {
+        const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
         if (!active) return
         setForm(recipeToForm(recipe))
-      })
-      .catch((requestError) => {
+      } catch (requestError) {
         if (!active) return
         setError(formatErrors(requestError))
-      })
+      }
+    }
+
+    fetchRecipeById()
 
     return () => {
       active = false
@@ -143,15 +129,6 @@ export function RecipeFormPage({
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
-  }
-
-  function updateIngredient(index: number, field: keyof RecipeIngredientInput, value: string) {
-    setForm((current) => ({
-      ...current,
-      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    }))
   }
 
   function updateInstruction(index: number, value: string) {
@@ -177,6 +154,29 @@ export function RecipeFormPage({
     }))
   }
 
+  function updateIngredient<Field extends keyof RecipeIngredientInput>(
+    index: number,
+    field: Field,
+    value: RecipeIngredientInput[Field],
+  ) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }))
+  }
+
+  function updateIngredientUnit(index: number, value: string) {
+    const selectedUnit = unitOptions.find((unit) => unit.value === value)
+    if (!selectedUnit) {
+      setError('Choose a unit from the list.')
+      return
+    }
+
+    updateIngredient(index, 'unit', selectedUnit.value)
+  }
+
   function addIngredient() {
     setForm((current) => ({
       ...current,
@@ -191,47 +191,15 @@ export function RecipeFormPage({
     }))
   }
 
-  function normalizeUnit(value: string) {
-    const trimmedValue = value.trim()
-    if (!trimmedValue) {
-      return ''
-    }
-
-    const normalizedValue = trimmedValue.toLowerCase()
-    const aliasedUnitValue = unitValueAliases[normalizedValue]
-    if (aliasedUnitValue) {
-      return aliasedUnitValue
-    }
-
-    const matchedUnit = unitOptions.find(
-      (unit) =>
-        unit.value.toLowerCase() === normalizedValue ||
-        unit.label.toLowerCase() === normalizedValue ||
-        unitLabelWithoutPluralHint(unit.label) === normalizedValue ||
-        pluralizedUnitLabel(unit.label) === normalizedValue,
-    )
-
-    return matchedUnit?.value
-  }
-
-  function ingredientItemsForPayload() {
-    const ingredientItems: RecipePayload['ingredient_items'] = []
-
-    for (const item of form.ingredient_items.filter((ingredient) => ingredient.name.trim() && ingredient.quantity)) {
-      const unit = normalizeUnit(item.unit)
-      if (unit === undefined) {
-        return undefined
-      }
-
-      ingredientItems.push({
+  function ingredientItemsForPayload(): RecipePayload['ingredient_items'] {
+    return form.ingredient_items
+      .filter((ingredient) => ingredient.name.trim() && ingredient.quantity)
+      .map((item) => ({
         name: item.name.trim(),
         quantity: Number(item.quantity),
-        unit,
+        unit: item.unit,
         note: item.note.trim(),
-      })
-    }
-
-    return ingredientItems
+      }))
   }
 
   function toPayload(ingredientItems: RecipePayload['ingredient_items']): RecipePayload {
@@ -256,10 +224,6 @@ export function RecipeFormPage({
     event.preventDefault()
     setError('')
     const ingredientItems = ingredientItemsForPayload()
-    if (ingredientItems === undefined) {
-      setError('Choose a unit from the list or leave the unit blank.')
-      return
-    }
 
     try {
       const recipe = await apiFetch<Recipe>(editing ? `/api/recipes/${recipeId}/` : '/api/recipes/', {
@@ -341,15 +305,6 @@ export function RecipeFormPage({
               <h2>Ingredients</h2>
             </div>
             <div className="ingredient-editor">
-              <datalist id="recipe-unit-options">
-                {unitOptions
-                  .filter((unit) => unit.value)
-                  .map((unit) => (
-                    <option key={unit.value} value={unit.value}>
-                      {unit.label}
-                    </option>
-                  ))}
-              </datalist>
               {form.ingredient_items.map((item, index) => (
                 <div className="ingredient-row" key={`ingredient-${index}`}>
                   <input
@@ -361,14 +316,17 @@ export function RecipeFormPage({
                     value={item.quantity}
                     onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
                   />
-                  <input
+                  <select
                     aria-label="Unit"
-                    list="recipe-unit-options"
-                    placeholder="Unit"
                     value={item.unit}
-                    autoComplete="off"
-                    onChange={(event) => updateIngredient(index, 'unit', event.target.value)}
-                  />
+                    onChange={(event) => updateIngredientUnit(index, event.target.value)}
+                  >
+                    {unitOptions.map((unit) => (
+                      <option key={unit.value || 'no-unit'} value={unit.value}>
+                        {unit.label}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     aria-label="Ingredient name"
                     placeholder="Ingredient"

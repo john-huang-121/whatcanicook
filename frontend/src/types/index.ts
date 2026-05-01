@@ -40,8 +40,37 @@ export type Cuisine = {
   label: string
 }
 
+export type RecipeUnitValue =
+  | ''
+  | 'teaspoon(s)'
+  | 'tablespoon(s)'
+  | 'fluid ounce(s)'
+  | 'cup(s)'
+  | 'pint(s)'
+  | 'quart(s)'
+  | 'gallon(s)'
+  | 'milliliter(s)'
+  | 'liter(s)'
+  | 'ounce(s)'
+  | 'pound(s)'
+  | 'gram(s)'
+  | 'kilogram(s)'
+  | 'whole'
+  | 'piece(s)'
+  | 'slice(s)'
+  | 'clove(s)'
+  | 'sprig(s)'
+  | 'bunch(es)'
+  | 'can(s)'
+  | 'jar(s)'
+  | 'package(s)'
+  | 'pinch(es)'
+  | 'dash(es)'
+  | 'handful(s)'
+  | 'to taste'
+
 export type RecipeUnit = {
-  value: string
+  value: RecipeUnitValue
   label: string
 }
 
@@ -49,7 +78,7 @@ export type RecipeIngredient = {
   id: number
   name: string
   quantity: number
-  unit: string
+  unit: RecipeUnitValue
   unit_label: string
   note: string
 }
@@ -57,7 +86,7 @@ export type RecipeIngredient = {
 export type RecipeIngredientInput = {
   name: string
   quantity: string
-  unit: string
+  unit: RecipeUnitValue
   note: string
 }
 
@@ -106,7 +135,7 @@ export type RecipePayload = {
   ingredient_items: Array<{
     name: string
     quantity: number
-    unit: string
+    unit: RecipeUnitValue
     note: string
   }>
 }
