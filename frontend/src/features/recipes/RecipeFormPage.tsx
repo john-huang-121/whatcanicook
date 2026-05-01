@@ -10,7 +10,6 @@ import type {
   RecipeIngredientInput,
   RecipeInstructionInput,
   RecipePayload,
-  RecipeUnit,
 } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 
@@ -35,7 +34,7 @@ const emptyRecipeForm: RecipeFormState = {
   cuisine: 'american',
   is_public: true,
   instruction_items: [{ text: '' }],
-  ingredient_items: [{ name: '', quantity: '', unit: '', note: '' }],
+  ingredient_items: [{ name: '', quantity: '', unit: '' }],
 }
 
 function recipeToForm(recipe: Recipe): RecipeFormState {
@@ -57,9 +56,8 @@ function recipeToForm(recipe: Recipe): RecipeFormState {
           name: item.name,
           quantity: item.quantity.toString(),
           unit: item.unit,
-          note: item.note,
         }))
-      : [{ name: '', quantity: '', unit: '', note: '' }],
+      : [{ name: '', quantity: '', unit: '' }],
   }
 }
 
@@ -74,53 +72,40 @@ export function RecipeFormPage({
 }) {
   const [form, setForm] = useState<RecipeFormState>(emptyRecipeForm)
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
-  const [unitOptions, setUnitOptions] = useState<RecipeUnit[]>([])
   const [error, setError] = useState('')
   const editing = recipeId !== undefined
 
-  // Fetch cuisines and unit options on mount
   useEffect(() => {
     let active = true
 
-    const fetchCuisinesAndUnitsList = async () => {
-      try {
-        const [cuisineResponse, unitResponse] = await Promise.all([
-          apiFetch<Cuisine[]>('/api/cuisines/'),
-          apiFetch<RecipeUnit[]>('/api/units/'),
-        ])
+    apiFetch<Cuisine[]>('/api/cuisines/')
+      .then((response) => {
         if (!active) return
-        setCuisines(cuisineResponse)
-        setUnitOptions(unitResponse)
-      } catch (requestError) {
+        setCuisines(response)
+      })
+      .catch((requestError) => {
         if (!active) return
         setError(formatErrors(requestError))
-      }
-    }
-
-    fetchCuisinesAndUnitsList()
+      })
 
     return () => {
       active = false
     }
   }, [])
 
-  // Fetch recipe data if editing an existing recipe
   useEffect(() => {
     if (!recipeId) return
     let active = true
 
-    const fetchRecipeById = async () => {
-      try {
-        const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
+    apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
+      .then((recipe) => {
         if (!active) return
         setForm(recipeToForm(recipe))
-      } catch (requestError) {
+      })
+      .catch((requestError) => {
         if (!active) return
         setError(formatErrors(requestError))
-      }
-    }
-
-    fetchRecipeById()
+      })
 
     return () => {
       active = false
@@ -129,6 +114,15 @@ export function RecipeFormPage({
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
+  }
+
+  function updateIngredient(index: number, field: keyof RecipeIngredientInput, value: string) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item,
+      ),
+    }))
   }
 
   function updateInstruction(index: number, value: string) {
@@ -154,33 +148,10 @@ export function RecipeFormPage({
     }))
   }
 
-  function updateIngredient<Field extends keyof RecipeIngredientInput>(
-    index: number,
-    field: Field,
-    value: RecipeIngredientInput[Field],
-  ) {
-    setForm((current) => ({
-      ...current,
-      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    }))
-  }
-
-  function updateIngredientUnit(index: number, value: string) {
-    const selectedUnit = unitOptions.find((unit) => unit.value === value)
-    if (!selectedUnit) {
-      setError('Choose a unit from the list.')
-      return
-    }
-
-    updateIngredient(index, 'unit', selectedUnit.value)
-  }
-
   function addIngredient() {
     setForm((current) => ({
       ...current,
-      ingredient_items: [...current.ingredient_items, { name: '', quantity: '', unit: '', note: '' }],
+      ingredient_items: [...current.ingredient_items, { name: '', quantity: '', unit: '' }],
     }))
   }
 
@@ -191,18 +162,7 @@ export function RecipeFormPage({
     }))
   }
 
-  function ingredientItemsForPayload(): RecipePayload['ingredient_items'] {
-    return form.ingredient_items
-      .filter((ingredient) => ingredient.name.trim() && ingredient.quantity)
-      .map((item) => ({
-        name: item.name.trim(),
-        quantity: Number(item.quantity),
-        unit: item.unit,
-        note: item.note.trim(),
-      }))
-  }
-
-  function toPayload(ingredientItems: RecipePayload['ingredient_items']): RecipePayload {
+  function toPayload(): RecipePayload {
     return {
       title: form.title,
       description: form.description,
@@ -216,19 +176,23 @@ export function RecipeFormPage({
         .map((item) => ({
           text: item.text.trim(),
         })),
-      ingredient_items: ingredientItems,
+      ingredient_items: form.ingredient_items
+        .filter((item) => item.name.trim() && item.quantity)
+        .map((item) => ({
+          name: item.name.trim(),
+          quantity: Number(item.quantity),
+          unit: item.unit.trim(),
+        })),
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    const ingredientItems = ingredientItemsForPayload()
-
     try {
       const recipe = await apiFetch<Recipe>(editing ? `/api/recipes/${recipeId}/` : '/api/recipes/', {
         method: editing ? 'PATCH' : 'POST',
-        body: toPayload(ingredientItems),
+        body: toPayload(),
       })
       navigate(`/recipes/${recipe.id}`)
     } catch (requestError) {
@@ -252,19 +216,21 @@ export function RecipeFormPage({
           </label>
           <div className="form-grid">
             <label>
-              Prep Time
+              Prep Time (minutes)
               <input
                 type="number"
                 min="0"
+                step="1"
                 value={form.prep_time}
                 onChange={(event) => setForm({ ...form, prep_time: event.target.value })}
               />
             </label>
             <label>
-              Cook Time
+              Cook Time (minutes)
               <input
                 type="number"
                 min="1"
+                step="1"
                 value={form.cook_time}
                 onChange={(event) => setForm({ ...form, cook_time: event.target.value })}
                 required
@@ -308,6 +274,12 @@ export function RecipeFormPage({
               {form.ingredient_items.map((item, index) => (
                 <div className="ingredient-row" key={`ingredient-${index}`}>
                   <input
+                    aria-label="Ingredient name"
+                    placeholder="Ingredient"
+                    value={item.name}
+                    onChange={(event) => updateIngredient(index, 'name', event.target.value)}
+                  />
+                  <input
                     aria-label="Quantity"
                     placeholder="Qty"
                     type="number"
@@ -316,28 +288,11 @@ export function RecipeFormPage({
                     value={item.quantity}
                     onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
                   />
-                  <select
+                  <input
                     aria-label="Unit"
+                    placeholder="Unit"
                     value={item.unit}
-                    onChange={(event) => updateIngredientUnit(index, event.target.value)}
-                  >
-                    {unitOptions.map((unit) => (
-                      <option key={unit.value || 'no-unit'} value={unit.value}>
-                        {unit.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    aria-label="Ingredient name"
-                    placeholder="Ingredient"
-                    value={item.name}
-                    onChange={(event) => updateIngredient(index, 'name', event.target.value)}
-                  />
-                  <input
-                    aria-label="Ingredient note"
-                    placeholder="Note"
-                    value={item.note}
-                    onChange={(event) => updateIngredient(index, 'note', event.target.value)}
+                    onChange={(event) => updateIngredient(index, 'unit', event.target.value)}
                   />
                   <button type="button" onClick={() => removeIngredient(index)} disabled={form.ingredient_items.length === 1}>
                     Remove
