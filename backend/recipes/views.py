@@ -3,8 +3,8 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Cuisine, Ingredient, Recipe
-from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer
+from .models import Cuisine, Ingredient, Recipe, Unit
+from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer, UnitSerializer
 
 
 def visible_recipes_for(user):
@@ -21,6 +21,15 @@ class CuisineListView(APIView):
     def get(self, request):
         cuisines = [{"value": choice.value, "label": choice.label} for choice in Cuisine]
         serializer = CuisineSerializer(cuisines, many=True)
+        return Response(serializer.data)
+
+
+class UnitListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        units = [{"value": choice.value, "label": choice.label} for choice in Unit]
+        serializer = UnitSerializer(units, many=True)
         return Response(serializer.data)
 
 

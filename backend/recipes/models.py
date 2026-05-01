@@ -46,6 +46,37 @@ class Cuisine(models.TextChoices):
     # Miscellaneous
     MISCELLANEOUS = 'miscellaneous', 'Miscellaneous'
 
+
+class Unit(models.TextChoices):
+    NONE = '', 'No unit'
+    TEASPOON = 'teaspoon(s)', 'teaspoon(s)'
+    TABLESPOON = 'tablespoon(s)', 'tablespoon(s)'
+    FLUID_OUNCE = 'fluid ounce(s)', 'fluid ounce(s)'
+    CUP = 'cup(s)', 'cup(s)'
+    PINT = 'pint(s)', 'pint(s)'
+    QUART = 'quart(s)', 'quart(s)'
+    GALLON = 'gallon(s)', 'gallon(s)'
+    MILLILITER = 'milliliter(s)', 'milliliter(s)'
+    LITER = 'liter(s)', 'liter(s)'
+    OUNCE = 'ounce(s)', 'ounce(s)'
+    POUND = 'pound(s)', 'pound(s)'
+    GRAM = 'gram(s)', 'gram(s)'
+    KILOGRAM = 'kilogram(s)', 'kilogram(s)'
+    WHOLE = 'whole', 'whole'
+    PIECE = 'piece(s)', 'piece(s)'
+    SLICE = 'slice(s)', 'slice(s)'
+    CLOVE = 'clove(s)', 'clove(s)'
+    SPRIG = 'sprig(s)', 'sprig(s)'
+    BUNCH = 'bunch(es)', 'bunch(es)'
+    CAN = 'can(s)', 'can(s)'
+    JAR = 'jar(s)', 'jar(s)'
+    PACKAGE = 'package(s)', 'package(s)'
+    PINCH = 'pinch(es)', 'pinch(es)'
+    DASH = 'dash(es)', 'dash(es)'
+    HANDFUL = 'handful(s)', 'handful(s)'
+    TO_TASTE = 'to taste', 'to taste'
+
+
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -119,12 +150,13 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients')
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='recipe_ingredients')
     quantity = models.FloatField()
-    unit = models.CharField(max_length=64, blank=True)
+    unit = models.CharField(max_length=20, choices=Unit.choices, blank=True, default=Unit.NONE)
+    note = models.CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
         parts = [str(self.quantity)]
         if self.unit:
-            parts.append(self.unit)
+            parts.append(self.get_unit_display())
         parts.append(self.ingredient.name)
         return " ".join(parts)
 

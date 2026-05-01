@@ -76,7 +76,8 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
               <ul className="ingredient-list">
                 {recipe.ingredients.map((item) => (
                   <li key={item.id}>
-                    {item.quantity} {[item.unit, item.name].filter(Boolean).join(' ')}
+                    {`${item.quantity} ${[item.unit_label, item.name].filter(Boolean).join(' ')}`}
+                    {item.note && <span className="muted"> ({item.note})</span>}
                   </li>
                 ))}
               </ul>

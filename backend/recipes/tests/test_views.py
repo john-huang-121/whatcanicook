@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from recipes.models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction
+from recipes.models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
 
 User = get_user_model()
 
@@ -44,7 +44,7 @@ class RecipeApiTests(TestCase):
             recipe=self.public_recipe,
             ingredient=self.ingredient,
             quantity=1,
-            unit="tsp",
+            unit=Unit.TEASPOON,
         )
         cook_it = Instruction.objects.create(text="Cook it.")
         keep_secret = Instruction.objects.create(text="Keep it secret.")
@@ -65,8 +65,8 @@ class RecipeApiTests(TestCase):
                 {"text": "Serve warm."},
             ],
             "ingredient_items": [
-                {"name": "Salt", "quantity": 1, "unit": "cup"},
-                {"name": "Pepper", "quantity": 0.5, "unit": "tsp"},
+                {"name": "Salt", "quantity": 1, "unit": Unit.CUP, "note": "fine sea salt"},
+                {"name": "Pepper", "quantity": 0.5, "unit": Unit.TEASPOON},
             ],
         }
 
@@ -75,6 +75,14 @@ class RecipeApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn({"value": "italian", "label": "Italian"}, response.json())
+
+    def test_units_endpoint_lists_choices(self):
+        response = self.client.get(reverse("recipes:unit-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn({"value": "teaspoon(s)", "label": "teaspoon(s)"}, response.json())
+        self.assertIn({"value": "slice(s)", "label": "slice(s)"}, response.json())
+        self.assertIn({"value": "to taste", "label": "to taste"}, response.json())
 
     def test_create_requires_login(self):
         response = self.client.post(
@@ -101,6 +109,9 @@ class RecipeApiTests(TestCase):
         self.assertFalse(recipe.is_public)
         self.assertEqual(recipe.recipe_ingredients.count(), 2)
         self.assertEqual(recipe.recipe_instructions.count(), 2)
+        self.assertEqual(response.json()["ingredients"][0]["unit_label"], "cup(s)")
+        self.assertEqual(response.json()["ingredients"][0]["note"], "fine sea salt")
+        self.assertEqual(recipe.recipe_ingredients.get(ingredient__name="Salt").note, "fine sea salt")
 
     def test_anonymous_cannot_view_private_recipe(self):
         response = self.client.get(reverse("recipes:recipe-detail", args=[self.private_recipe.id]))
@@ -130,6 +141,20 @@ class RecipeApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("instruction_items", response.json())
+
+    def test_create_rejects_unknown_unit(self):
+        self.client.login(username="owner", password="testpass123")
+        payload = self.recipe_payload()
+        payload["ingredient_items"][0]["unit"] = "scoop"
+
+        response = self.client.post(
+            reverse("recipes:recipe-list"),
+            payload,
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("ingredient_items", response.json())
 
     def test_cuisine_endpoint_hides_other_users_private_recipes(self):
         response = self.client.get(reverse("recipes:recipe-list"), {"cuisine": Cuisine.ITALIAN})
@@ -165,7 +190,7 @@ class RecipeApiTests(TestCase):
             {
                 "title": "Updated Pasta",
                 "ingredient_items": [
-                    {"name": "Tomato", "quantity": 2, "unit": "cups"},
+                    {"name": "Tomato", "quantity": 2, "unit": Unit.CUP, "note": "diced"},
                 ],
             },
             content_type="application/json",
@@ -176,6 +201,7 @@ class RecipeApiTests(TestCase):
         self.assertEqual(self.public_recipe.title, "Updated Pasta")
         self.assertEqual(self.public_recipe.recipe_ingredients.count(), 1)
         self.assertEqual(self.public_recipe.recipe_ingredients.first().ingredient.name, "Tomato")
+        self.assertEqual(self.public_recipe.recipe_ingredients.first().note, "diced")
 
     def test_owner_can_update_recipe_instructions(self):
         self.client.login(username="owner", password="testpass123")
