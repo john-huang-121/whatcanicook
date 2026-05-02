@@ -1,6 +1,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from social.models import RecipeLike, SavedRecipe, UserFollow
+
 from .models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
 
 
@@ -44,6 +46,12 @@ class RecipeSerializer(serializers.ModelSerializer):
     published_date = serializers.CharField(read_only=True)
     total_time = serializers.IntegerField(read_only=True)
     is_owner = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    save_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
+    is_following_author = serializers.SerializerMethodField()
+    author_follower_count = serializers.SerializerMethodField()
     ingredients = RecipeIngredientReadSerializer(source="recipe_ingredients", many=True, read_only=True)
     ingredient_items = RecipeIngredientWriteSerializer(many=True, write_only=True, required=False)
     instructions = RecipeInstructionReadSerializer(source="recipe_instructions", many=True, read_only=True)
@@ -66,6 +74,12 @@ class RecipeSerializer(serializers.ModelSerializer):
             "created_by_username",
             "is_public",
             "is_owner",
+            "like_count",
+            "save_count",
+            "is_liked",
+            "is_saved",
+            "is_following_author",
+            "author_follower_count",
             "ingredients",
             "ingredient_items",
             "published_date",
@@ -78,6 +92,12 @@ class RecipeSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_username",
             "is_owner",
+            "like_count",
+            "save_count",
+            "is_liked",
+            "is_saved",
+            "is_following_author",
+            "author_follower_count",
             "published_date",
             "total_time",
             "created_at",
@@ -87,6 +107,39 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_owner(self, obj):
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated and obj.created_by_id == request.user.id)
+
+    def get_like_count(self, obj):
+        like_count = getattr(obj, "like_count", None)
+        if like_count is not None:
+            return like_count
+        return obj.likes.count()
+
+    def get_save_count(self, obj):
+        save_count = getattr(obj, "save_count", None)
+        if save_count is not None:
+            return save_count
+        return obj.saves.count()
+
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return RecipeLike.objects.filter(recipe=obj, user=request.user).exists()
+
+    def get_is_saved(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return SavedRecipe.objects.filter(recipe=obj, user=request.user).exists()
+
+    def get_is_following_author(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated or obj.created_by_id == request.user.id:
+            return False
+        return UserFollow.objects.filter(follower=request.user, following=obj.created_by).exists()
+
+    def get_author_follower_count(self, obj):
+        return obj.created_by.follower_relationships.count()
 
     def validate_cuisine(self, value):
         if value and value not in Cuisine.values:

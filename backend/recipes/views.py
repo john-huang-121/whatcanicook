@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +13,7 @@ def visible_recipes_for(user):
         Recipe.objects.visible_to(user)
         .select_related("created_by")
         .prefetch_related("recipe_ingredients__ingredient", "recipe_instructions__instruction")
+        .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
 
 

@@ -19,6 +19,7 @@
 
 .brand,
 .nav-links,
+.auth-links,
 .action-row,
 .detail-header,
 .form-section-header,
@@ -50,6 +51,10 @@
   gap: 0.85rem;
 }
 
+.auth-links {
+  gap: 0.7rem;
+}
+
 .nav-links button,
 .text-button,
 .mini-actions button,
@@ -69,9 +74,73 @@
   font-weight: 700;
 }
 
-.nav-greeting {
-  color: #4b5563;
-  font-size: 0.93rem;
+.account-menu {
+  position: relative;
+}
+
+.account-menu::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 100%;
+  height: 0.55rem;
+  content: '';
+}
+
+.avatar-button {
+  width: 2.55rem;
+  height: 2.55rem;
+  overflow: hidden;
+  border: 1px solid #bbf7d0 !important;
+  border-radius: 999px;
+  background: #ecfdf5 !important;
+  color: #166534 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.avatar-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-button span {
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  display: none;
+  min-width: 10rem;
+  border: 1px solid #fed7aa;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  padding: 0.45rem;
+}
+
+.account-menu:hover .account-dropdown,
+.account-menu:focus-within .account-dropdown {
+  display: grid;
+}
+
+.account-dropdown button {
+  width: 100%;
+  border-radius: 0.4rem;
+  padding: 0.7rem 0.75rem;
+  text-align: left;
+}
+
+.account-dropdown button:hover,
+.account-dropdown button:focus-visible {
+  background: #f0fdf4;
+  color: #166534;
 }
 
 .menu-button {
@@ -192,6 +261,49 @@ p {
   padding: clamp(2rem, 6vw, 4rem) 1rem;
 }
 
+.user-workspace {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  min-height: calc(100vh - 73px);
+}
+
+.user-sidebar {
+  position: sticky;
+  top: 73px;
+  align-self: start;
+  min-height: calc(100vh - 73px);
+  border-right: 1px solid #fed7aa;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 1rem;
+}
+
+.user-sidebar-nav {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.user-sidebar-link {
+  border-radius: 0.5rem;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.user-sidebar-link:hover,
+.user-sidebar-link:focus-visible,
+.user-sidebar-link.active {
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.user-workspace-content {
+  min-width: 0;
+}
+
 .page-inner,
 .detail-shell,
 .form-shell,
@@ -207,6 +319,10 @@ p {
 
 .section-heading {
   margin-bottom: 2rem;
+}
+
+.section-heading .primary-button {
+  margin-top: 0.5rem;
 }
 
 .section-heading.centered {
@@ -316,6 +432,13 @@ p {
   color: #6b7280;
 }
 
+.recipe-card .recipe-card-meta {
+  margin-top: -0.5rem;
+  color: #166534;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .detail-shell,
 .form-shell,
 .auth-panel,
@@ -400,6 +523,17 @@ p {
 .lead {
   color: #374151;
   font-size: 1.1rem;
+}
+
+.social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+
+.compact-error {
+  margin-top: -0.5rem;
 }
 
 .recipe-facts-grid {
@@ -636,9 +770,95 @@ textarea {
   gap: 0.5rem;
 }
 
+.dashboard-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-hero,
+.dashboard-section,
+.stats-grid > div {
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.dashboard-hero h1 {
+  margin-bottom: 0.55rem;
+  color: #111827;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+}
+
+.dashboard-hero p:last-child {
+  max-width: 42rem;
+  color: #4b5563;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stats-grid > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.2rem;
+}
+
+.stats-grid strong {
+  color: #111827;
+  font-size: 2rem;
+}
+
+.stats-grid span {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.dashboard-section {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
 @media (max-width: 900px) {
   .menu-button {
     display: inline-flex;
+  }
+
+  .user-workspace {
+    display: block;
+  }
+
+  .user-sidebar {
+    position: sticky;
+    top: 73px;
+    z-index: 15;
+    min-height: 0;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid #fed7aa;
+    padding: 0.65rem 1rem;
+  }
+
+  .user-sidebar-nav {
+    display: flex;
+    gap: 0.45rem;
+    width: max-content;
+  }
+
+  .user-sidebar-link {
+    min-height: 2.35rem;
+    padding: 0.55rem 0.75rem;
+    white-space: nowrap;
   }
 
   .nav-links {
@@ -661,14 +881,31 @@ textarea {
   }
 
   .nav-links button,
-  .nav-greeting {
+  .auth-links {
     text-align: left;
     padding: 0.65rem;
   }
 
+  .auth-links {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .account-menu {
+    align-self: flex-start;
+  }
+
+  .account-dropdown {
+    right: auto;
+    left: 0;
+  }
+
   .cuisine-grid,
   .recipe-grid,
-  .recipe-facts-grid {
+  .recipe-facts-grid,
+  .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -684,6 +921,7 @@ textarea {
     min-height: auto;
   }
 
+  .dashboard-hero,
   .detail-header,
   .profile-summary,
   .form-section-header {
@@ -698,6 +936,7 @@ textarea {
   .cuisine-grid,
   .recipe-grid,
   .recipe-facts-grid,
+  .stats-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

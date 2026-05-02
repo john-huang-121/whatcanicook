@@ -252,7 +252,7 @@ export function RecipeFormPage({
           </label>
           <div className="form-grid">
             <label>
-              Prep Time
+              Prep Time (minutes)
               <input
                 type="number"
                 min="0"
@@ -261,7 +261,7 @@ export function RecipeFormPage({
               />
             </label>
             <label>
-              Cook Time
+              Cook Time (minutes)
               <input
                 type="number"
                 min="1"

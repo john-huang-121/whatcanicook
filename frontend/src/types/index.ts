@@ -114,6 +114,12 @@ export type Recipe = {
   created_by_username: string
   is_public: boolean
   is_owner: boolean
+  like_count: number
+  save_count: number
+  is_liked: boolean
+  is_saved: boolean
+  is_following_author: boolean
+  author_follower_count: number
   ingredients: RecipeIngredient[]
   published_date: string
   total_time: number
@@ -138,4 +144,25 @@ export type RecipePayload = {
     unit: RecipeUnitValue
     note: string
   }>
+}
+
+export type FollowResponse = {
+  user_id: number
+  is_following: boolean
+  follower_count: number
+  following_count: number
+}
+
+export type DashboardStats = {
+  recipe_count: number
+  public_recipe_count: number
+  follower_count: number
+  following_count: number
+  saved_recipe_count: number
+}
+
+export type DashboardResponse = {
+  feed: Recipe[]
+  saved_recipes: Recipe[]
+  stats: DashboardStats
 }
