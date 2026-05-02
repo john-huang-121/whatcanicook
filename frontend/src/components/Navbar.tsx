@@ -12,9 +12,24 @@ export function Navbar({
   logout: () => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
+  const displayName = auth.user?.profile.display_name || auth.user?.username || 'User'
+  const profileImage = auth.user?.profile.profile_picture_url
+  const avatarInitials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+
   const closeAndNavigate = (to: string) => {
     setOpen(false)
     navigate(to)
+  }
+
+  const handleLogout = () => {
+    setOpen(false)
+    void logout()
   }
 
   return (
@@ -32,29 +47,34 @@ export function Navbar({
         </button>
         {auth.authenticated ? (
           <>
-            <button type="button" onClick={() => closeAndNavigate('/dashboard')}>
-              Dashboard
-            </button>
-            <button type="button" onClick={() => closeAndNavigate('/recipes/new')}>
-              Create A Recipe
-            </button>
-            <button type="button" onClick={() => closeAndNavigate('/profile')}>
-              My Profile
-            </button>
-            <span className="nav-greeting">Hi, {auth.user?.profile.display_name || auth.user?.username}</span>
-            <button type="button" onClick={() => void logout()}>
-              Log out
-            </button>
+            <div className="account-menu">
+              <button
+                className="avatar-button"
+                type="button"
+                aria-haspopup="true"
+                aria-label={`${displayName} account menu`}
+              >
+                {profileImage ? <img src={profileImage} alt="" /> : <span>{avatarInitials}</span>}
+              </button>
+              <div className="account-dropdown">
+                <button type="button" onClick={() => closeAndNavigate('/profile')}>
+                  My Profile
+                </button>
+                <button type="button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            </div>
           </>
         ) : (
-          <>
+          <div className="auth-links">
             <button type="button" onClick={() => closeAndNavigate('/login')}>
-              Log in
+              Login
             </button>
             <button type="button" onClick={() => closeAndNavigate('/signup')}>
-              Sign up
+              Signup
             </button>
-          </>
+          </div>
         )}
       </nav>
     </header>

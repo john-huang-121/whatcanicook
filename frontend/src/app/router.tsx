@@ -7,6 +7,7 @@ import { ProfilePage } from '../features/profile/ProfilePage'
 import { CuisineIndexPage } from '../features/recipes/CuisineIndexPage'
 import { CuisinePage } from '../features/recipes/CuisinePage'
 import { DeleteRecipePage } from '../features/recipes/DeleteRecipePage'
+import { RecipeCollectionPage } from '../features/recipes/RecipeCollectionPage'
 import { RecipeDetailPage } from '../features/recipes/RecipeDetailPage'
 import { RecipeFormPage } from '../features/recipes/RecipeFormPage'
 import { NotFoundPage } from '../components/NotFoundPage'
@@ -31,6 +32,8 @@ export function AppRouter({
   if (path === '/dashboard') return <DashboardPage auth={auth} navigate={navigate} />
   if (path === '/recipes') return <CuisineIndexPage navigate={navigate} />
   if (path === '/recipes/new') return <RecipeFormPage auth={auth} navigate={navigate} />
+  if (path === '/recipes/mine') return <RecipeCollectionPage key="mine" auth={auth} kind="mine" navigate={navigate} />
+  if (path === '/recipes/saved') return <RecipeCollectionPage key="saved" auth={auth} kind="saved" navigate={navigate} />
   if (path === '/login') return <LoginPage setAuth={setAuth} navigate={navigate} />
   if (path === '/signup') return <SignupPage setAuth={setAuth} navigate={navigate} />
   if (path === '/profile') return <ProfilePage auth={auth} navigate={navigate} setAuth={setAuth} />
