@@ -316,6 +316,13 @@ p {
   color: #6b7280;
 }
 
+.recipe-card .recipe-card-meta {
+  margin-top: -0.5rem;
+  color: #166534;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .detail-shell,
 .form-shell,
 .auth-panel,
@@ -400,6 +407,17 @@ p {
 .lead {
   color: #374151;
   font-size: 1.1rem;
+}
+
+.social-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+
+.compact-error {
+  margin-top: -0.5rem;
 }
 
 .recipe-facts-grid {
@@ -636,6 +654,65 @@ textarea {
   gap: 0.5rem;
 }
 
+.dashboard-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-hero,
+.dashboard-section,
+.stats-grid > div {
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.dashboard-hero h1 {
+  margin-bottom: 0.55rem;
+  color: #111827;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+}
+
+.dashboard-hero p:last-child {
+  max-width: 42rem;
+  color: #4b5563;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stats-grid > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.2rem;
+}
+
+.stats-grid strong {
+  color: #111827;
+  font-size: 2rem;
+}
+
+.stats-grid span {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.dashboard-section {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
 @media (max-width: 900px) {
   .menu-button {
     display: inline-flex;
@@ -668,7 +745,8 @@ textarea {
 
   .cuisine-grid,
   .recipe-grid,
-  .recipe-facts-grid {
+  .recipe-facts-grid,
+  .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -684,6 +762,7 @@ textarea {
     min-height: auto;
   }
 
+  .dashboard-hero,
   .detail-header,
   .profile-summary,
   .form-section-header {
@@ -698,6 +777,7 @@ textarea {
   .cuisine-grid,
   .recipe-grid,
   .recipe-facts-grid,
+  .stats-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

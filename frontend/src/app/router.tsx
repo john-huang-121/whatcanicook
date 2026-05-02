@@ -1,6 +1,7 @@
 import type { AuthState, Navigate, SetAuth } from '../types'
 import { LoginPage } from '../features/auth/LoginPage'
 import { SignupPage } from '../features/auth/SignupPage'
+import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { HomePage } from '../features/home/HomePage'
 import { ProfilePage } from '../features/profile/ProfilePage'
 import { CuisineIndexPage } from '../features/recipes/CuisineIndexPage'
@@ -27,6 +28,7 @@ export function AppRouter({
   const cuisineMatch = path.match(/^\/recipes\/cuisine\/([a-z_]+)$/)
 
   if (path === '/') return <HomePage auth={auth} navigate={navigate} />
+  if (path === '/dashboard') return <DashboardPage auth={auth} navigate={navigate} />
   if (path === '/recipes') return <CuisineIndexPage navigate={navigate} />
   if (path === '/recipes/new') return <RecipeFormPage auth={auth} navigate={navigate} />
   if (path === '/login') return <LoginPage setAuth={setAuth} navigate={navigate} />

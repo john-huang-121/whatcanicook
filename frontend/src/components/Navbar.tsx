@@ -32,6 +32,9 @@ export function Navbar({
         </button>
         {auth.authenticated ? (
           <>
+            <button type="button" onClick={() => closeAndNavigate('/dashboard')}>
+              Dashboard
+            </button>
             <button type="button" onClick={() => closeAndNavigate('/recipes/new')}>
               Create A Recipe
             </button>
