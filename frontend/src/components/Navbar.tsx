@@ -42,7 +42,7 @@ export function Navbar({
         <span>{open ? 'Close' : 'Menu'}</span>
       </button>
       <nav className={`nav-links ${open ? 'open' : ''}`}>
-        <button type="button" onClick={() => closeAndNavigate('/recipes')}>
+        <button className="browse-nav-link" type="button" onClick={() => closeAndNavigate('/recipes')}>
           Browse Recipes
         </button>
         {auth.authenticated ? (
