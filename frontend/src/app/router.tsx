@@ -23,20 +23,23 @@ export function AppRouter({
   setAuth: SetAuth
   navigate: Navigate
 }) {
-  const recipeDetailMatch = path.match(/^\/recipes\/(\d+)$/)
-  const recipeEditMatch = path.match(/^\/recipes\/(\d+)\/edit$/)
-  const recipeDeleteMatch = path.match(/^\/recipes\/(\d+)\/delete$/)
-  const cuisineMatch = path.match(/^\/recipes\/cuisine\/([a-z_]+)$/)
+  const [pathname, queryString = ''] = path.split('?')
+  const searchParams = new URLSearchParams(queryString)
+  const recipeDetailMatch = pathname.match(/^\/recipes\/(\d+)$/)
+  const recipeEditMatch = pathname.match(/^\/recipes\/(\d+)\/edit$/)
+  const recipeDeleteMatch = pathname.match(/^\/recipes\/(\d+)\/delete$/)
+  const cuisineMatch = pathname.match(/^\/recipes\/cuisine\/([a-z_]+)$/)
 
-  if (path === '/') return <HomePage auth={auth} navigate={navigate} />
-  if (path === '/dashboard') return <DashboardPage auth={auth} navigate={navigate} />
-  if (path === '/recipes') return <CuisineIndexPage navigate={navigate} />
-  if (path === '/recipes/new') return <RecipeFormPage auth={auth} navigate={navigate} />
-  if (path === '/recipes/mine') return <RecipeCollectionPage key="mine" auth={auth} kind="mine" navigate={navigate} />
-  if (path === '/recipes/saved') return <RecipeCollectionPage key="saved" auth={auth} kind="saved" navigate={navigate} />
-  if (path === '/login') return <LoginPage setAuth={setAuth} navigate={navigate} />
-  if (path === '/signup') return <SignupPage setAuth={setAuth} navigate={navigate} />
-  if (path === '/profile') return <ProfilePage auth={auth} navigate={navigate} setAuth={setAuth} />
+  if (pathname === '/') return <HomePage auth={auth} navigate={navigate} />
+  if (pathname === '/dashboard') return <DashboardPage auth={auth} navigate={navigate} />
+  if (pathname === '/recipes')
+    return <CuisineIndexPage key={searchParams.get('q') ?? ''} navigate={navigate} searchQuery={searchParams.get('q') ?? ''} />
+  if (pathname === '/recipes/new') return <RecipeFormPage auth={auth} navigate={navigate} />
+  if (pathname === '/recipes/mine') return <RecipeCollectionPage key="mine" auth={auth} kind="mine" navigate={navigate} />
+  if (pathname === '/recipes/saved') return <RecipeCollectionPage key="saved" auth={auth} kind="saved" navigate={navigate} />
+  if (pathname === '/login') return <LoginPage setAuth={setAuth} navigate={navigate} />
+  if (pathname === '/signup') return <SignupPage setAuth={setAuth} navigate={navigate} />
+  if (pathname === '/profile') return <ProfilePage auth={auth} navigate={navigate} setAuth={setAuth} />
   if (recipeEditMatch) return <RecipeFormPage auth={auth} navigate={navigate} recipeId={Number(recipeEditMatch[1])} />
   if (recipeDeleteMatch) return <DeleteRecipePage auth={auth} navigate={navigate} recipeId={Number(recipeDeleteMatch[1])} />
   if (recipeDetailMatch) return <RecipeDetailPage auth={auth} navigate={navigate} recipeId={Number(recipeDetailMatch[1])} />

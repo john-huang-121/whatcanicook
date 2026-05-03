@@ -84,7 +84,7 @@
   right: 0;
   width: 100%;
   height: 0.55rem;
-  content: '';
+  content: "";
 }
 
 .avatar-button {
@@ -309,7 +309,7 @@ p {
 .form-shell,
 .auth-panel,
 .message-panel {
-  width: min(1120px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
 }
 
@@ -323,6 +323,113 @@ p {
 
 .section-heading .primary-button {
   margin-top: 0.5rem;
+}
+
+.recipe-search-form {
+  display: grid;
+  gap: 0.65rem;
+  width: min(720px, 100%);
+  margin: 1.5rem auto 0;
+  text-align: left;
+}
+
+.recipe-search-form label {
+  color: #374151;
+  font-weight: 800;
+}
+
+.recipe-search-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+.recipe-search-combobox {
+  position: relative;
+  flex: 1;
+}
+
+.recipe-search-controls input,
+.recipe-search-combobox {
+  flex: 1;
+}
+
+.recipe-search-controls input,
+.recipe-search-controls .primary-button,
+.recipe-search-controls .text-button {
+  height: 3rem;
+  min-height: 3rem;
+  margin-top: 0;
+}
+
+.recipe-search-controls input {
+  display: block;
+  line-height: 1.2;
+  padding-block: 0;
+}
+
+.recipe-search-controls .primary-button,
+.recipe-search-controls .text-button {
+  flex: 0 0 auto;
+  padding-block: 0;
+}
+
+.recipe-search-suggestions {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  overflow: hidden;
+  border: 1px solid #fed7aa;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+}
+
+.recipe-search-suggestion,
+.recipe-search-suggestion-status {
+  width: 100%;
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  text-align: left;
+}
+
+.recipe-search-suggestion {
+  display: grid;
+  gap: 0.2rem;
+  border: 0;
+  border-bottom: 1px solid #ffedd5;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+  font: inherit;
+}
+
+.recipe-search-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.recipe-search-suggestion:hover,
+.recipe-search-suggestion:focus-visible,
+.recipe-search-suggestion.active {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.recipe-search-suggestion span {
+  font-weight: 850;
+}
+
+.recipe-search-suggestion small,
+.recipe-search-suggestion-status {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.search-results-section {
+  display: grid;
+  gap: 1rem;
 }
 
 .section-heading.centered {
@@ -945,6 +1052,15 @@ textarea {
     width: 5.5rem;
     height: 5.5rem;
   }
+
+  .recipe-search-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recipe-search-combobox {
+    width: 100%;
+  }
 }
 
 /* Style direction 3: Sunlit Apron */
@@ -1146,7 +1262,7 @@ select:focus {
   inset: auto 0 0;
   height: 42%;
   background: linear-gradient(transparent, rgba(51, 37, 27, 0.22));
-  content: '';
+  content: "";
 }
 
 .recipe-card-image img {

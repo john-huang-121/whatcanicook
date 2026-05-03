@@ -40,6 +40,16 @@ class RecipeApiTests(TestCase):
             created_by=self.owner,
             is_public=False,
         )
+        self.middle_eastern_recipe = Recipe.objects.create(
+            title="Falafel Plate",
+            description="Herby chickpea dinner",
+            prep_time=20,
+            cook_time=10,
+            servings=3,
+            cuisine=Cuisine.MIDDLE_EASTERN,
+            created_by=self.owner,
+            is_public=True,
+        )
         RecipeIngredient.objects.create(
             recipe=self.public_recipe,
             ingredient=self.ingredient,
@@ -170,6 +180,69 @@ class RecipeApiTests(TestCase):
         recipe_titles = [recipe["title"] for recipe in response.json()]
 
         self.assertIn("Private Pasta", recipe_titles)
+
+    def test_search_matches_recipe_title(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "Public"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+
+    def test_search_matches_recipe_description(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "everyone"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+
+    def test_search_matches_ingredient_name(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "Salt"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+
+    def test_search_matches_author_username(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "owner"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+        self.assertIn("Falafel Plate", recipe_titles)
+
+    def test_search_matches_cuisine_label_and_value(self):
+        label_response = self.client.get(reverse("recipes:recipe-list"), {"q": "Middle"})
+        value_response = self.client.get(reverse("recipes:recipe-list"), {"q": "middle_eastern"})
+
+        self.assertIn("Falafel Plate", [recipe["title"] for recipe in label_response.json()])
+        self.assertIn("Falafel Plate", [recipe["title"] for recipe in value_response.json()])
+
+    def test_search_matches_any_word(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "marshmallow Salt"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+
+    def test_search_hides_other_users_private_recipes(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "Private"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertNotIn("Private Pasta", recipe_titles)
+
+    def test_owner_can_search_private_recipes(self):
+        self.client.login(username="owner", password="testpass123")
+
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "Private"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Private Pasta", recipe_titles)
+
+    def test_search_combines_with_cuisine_and_mine_filter(self):
+        self.client.login(username="owner", password="testpass123")
+
+        response = self.client.get(
+            reverse("recipes:recipe-list"),
+            {"q": "Private", "cuisine": Cuisine.ITALIAN, "mine": "true"},
+        )
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertEqual(recipe_titles, ["Private Pasta"])
 
     def test_non_owner_cannot_edit_recipe(self):
         self.client.login(username="other", password="testpass123")

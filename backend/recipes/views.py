@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from django.db.models import Count
+from django.db.models import Count, Q
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -47,6 +47,27 @@ class IngredientListView(APIView):
 class RecipeListView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def get_search_filter(self, search_query):
+        search_filter = None
+        search_terms = [term.strip() for term in search_query.split() if term.strip()]
+
+        for term in search_terms:
+            matching_cuisines = [
+                choice.value
+                for choice in Cuisine
+                if term.lower() in choice.value.lower() or term.lower() in choice.label.lower()
+            ]
+            term_filter = (
+                Q(title__icontains=term)
+                | Q(description__icontains=term)
+                | Q(created_by__username__icontains=term)
+                | Q(recipe_ingredients__ingredient__name__icontains=term)
+                | Q(cuisine__in=matching_cuisines)
+            )
+            search_filter = term_filter if search_filter is None else search_filter | term_filter
+
+        return search_filter
+
     def get_queryset(self, request):
         queryset = visible_recipes_for(request.user).order_by("-created_at")
 
@@ -59,6 +80,12 @@ class RecipeListView(APIView):
             if not request.user.is_authenticated:
                 return Recipe.objects.none()
             queryset = queryset.filter(created_by=request.user)
+
+        search_query = request.query_params.get("q", "").strip()
+        if search_query:
+            search_filter = self.get_search_filter(search_query)
+            if search_filter is not None:
+                queryset = queryset.filter(search_filter).distinct()
 
         return queryset
 
