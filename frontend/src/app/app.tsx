@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './app.css'
 import { MessagePage } from '../components/MessagePage'
 import { Navbar } from '../components/Navbar'
+import { UserWorkspace } from '../components/UserWorkspace'
 import { usePath } from '../hooks/usePath'
 import { apiFetch } from '../lib/api'
 import type { AuthResponse, AuthState } from '../types'
@@ -42,16 +43,16 @@ export function App() {
     navigate('/')
   }
 
+  const page = authError ? (
+    <MessagePage title="Session unavailable" message={authError} navigate={navigate} />
+  ) : (
+    <AppRouter path={path} auth={auth} setAuth={setAuth} navigate={navigate} />
+  )
+
   return (
     <div className="app-shell">
       <Navbar auth={auth} navigate={navigate} logout={logout} />
-      <main>
-        {authError ? (
-          <MessagePage title="Session unavailable" message={authError} navigate={navigate} />
-        ) : (
-          <AppRouter path={path} auth={auth} setAuth={setAuth} navigate={navigate} />
-        )}
-      </main>
+      <main>{auth.authenticated ? <UserWorkspace path={path} navigate={navigate}>{page}</UserWorkspace> : page}</main>
     </div>
   )
 }

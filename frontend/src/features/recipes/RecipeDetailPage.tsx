@@ -3,13 +3,18 @@ import { LoadingPage } from '../../components/LoadingPage'
 import { MessagePage } from '../../components/MessagePage'
 import { RecipeFact } from './components/RecipeFact'
 import { apiFetch } from '../../lib/api'
-import type { AuthState, Navigate, Recipe } from '../../types'
+import type { AuthState, FollowResponse, Navigate, Recipe } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 import { titleize } from '../../utils/titleize'
+
+type RecipeAction = 'like' | 'save'
+type BusyAction = RecipeAction | 'follow' | null
 
 export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState; navigate: Navigate; recipeId: number }) {
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [busyAction, setBusyAction] = useState<BusyAction>(null)
 
   useEffect(() => {
     let active = true
@@ -32,6 +37,59 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
   if (error) return <MessagePage title="Recipe unavailable" message={error} navigate={navigate} />
   if (!recipe) return <LoadingPage message="Loading recipe..." />
 
+  function requireLogin() {
+    if (auth.authenticated) {
+      return true
+    }
+    navigate('/login')
+    return false
+  }
+
+  async function toggleRecipeAction(action: RecipeAction) {
+    if (!recipe || !requireLogin()) return
+
+    setActionError('')
+    setBusyAction(action)
+    const active = action === 'like' ? recipe.is_liked : recipe.is_saved
+
+    try {
+      const updatedRecipe = await apiFetch<Recipe>(`/api/recipes/${recipe.id}/${action}/`, {
+        method: active ? 'DELETE' : 'POST',
+      })
+      setRecipe(updatedRecipe)
+    } catch (requestError) {
+      setActionError(formatErrors(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  async function toggleFollowAuthor() {
+    if (!recipe || !requireLogin()) return
+
+    setActionError('')
+    setBusyAction('follow')
+
+    try {
+      const follow = await apiFetch<FollowResponse>(`/api/users/${recipe.created_by}/follow/`, {
+        method: recipe.is_following_author ? 'DELETE' : 'POST',
+      })
+      setRecipe((current) =>
+        current
+          ? {
+              ...current,
+              is_following_author: follow.is_following,
+              author_follower_count: follow.follower_count,
+            }
+          : current,
+      )
+    } catch (requestError) {
+      setActionError(formatErrors(requestError))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   return (
     <section className="page-band">
       <div className="detail-shell">
@@ -43,6 +101,7 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
               <p>
                 By {recipe.created_by_username} on {recipe.published_date}
               </p>
+              <p className="muted">{recipe.author_follower_count} followers</p>
             </div>
             <div className="status-stack">
               <span className={recipe.is_public ? 'pill success' : 'pill danger'}>
@@ -60,6 +119,38 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
               )}
             </div>
           </div>
+
+          <div className="social-actions">
+            {recipe.is_public && !recipe.is_owner && (
+              <button
+                type="button"
+                className={recipe.is_liked ? 'primary-button' : 'secondary-button'}
+                onClick={() => void toggleRecipeAction('like')}
+                disabled={busyAction === 'like'}
+              >
+                {recipe.is_liked ? 'Liked' : 'Like'} ({recipe.like_count})
+              </button>
+            )}
+            <button
+              type="button"
+              className={recipe.is_saved ? 'primary-button' : 'secondary-button'}
+              onClick={() => void toggleRecipeAction('save')}
+              disabled={busyAction === 'save'}
+            >
+              {recipe.is_saved ? 'Saved' : 'Save'} ({recipe.save_count})
+            </button>
+            {recipe.is_public && !recipe.is_owner && (
+              <button
+                type="button"
+                className={recipe.is_following_author ? 'primary-button' : 'secondary-button'}
+                onClick={() => void toggleFollowAuthor()}
+                disabled={busyAction === 'follow'}
+              >
+                {recipe.is_following_author ? 'Following' : `Follow ${recipe.created_by_username}`}
+              </button>
+            )}
+          </div>
+          {actionError && <p className="form-error compact-error">{actionError}</p>}
 
           {recipe.description && <p className="lead">{recipe.description}</p>}
 

@@ -12,6 +12,9 @@ export function RecipeGrid({ recipes, navigate }: { recipes: Recipe[]; navigate:
             {!recipe.is_public && <strong>Private to you</strong>}
             <h2>{recipe.title}</h2>
             <p>By {recipe.created_by_username}</p>
+            <p className="recipe-card-meta">
+              {recipe.like_count} likes / {recipe.save_count} saves
+            </p>
           </button>
         </article>
       ))}
