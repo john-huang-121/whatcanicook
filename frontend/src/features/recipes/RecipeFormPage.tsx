@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useId, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
 import type {
   AuthState,
   Cuisine,
+  Ingredient,
   Navigate,
   Recipe,
   RecipeIngredientInput,
@@ -35,8 +36,10 @@ const emptyRecipeForm: RecipeFormState = {
   cuisine: 'american',
   is_public: true,
   instruction_items: [{ text: '' }],
-  ingredient_items: [{ name: '', quantity: '', unit: '', note: '' }],
+  ingredient_items: [{ ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' }],
 }
+
+const maximumIngredientSuggestions = 6
 
 function recipeToForm(recipe: Recipe): RecipeFormState {
   return {
@@ -54,12 +57,14 @@ function recipeToForm(recipe: Recipe): RecipeFormState {
       : [{ text: '' }],
     ingredient_items: recipe.ingredients.length
       ? recipe.ingredients.map((item) => ({
+          ingredient_id: item.ingredient_id,
+          user_ingredient_id: item.user_ingredient_id,
           name: item.name,
           quantity: item.quantity.toString(),
           unit: item.unit,
           note: item.note,
         }))
-      : [{ name: '', quantity: '', unit: '', note: '' }],
+      : [{ ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' }],
   }
 }
 
@@ -72,24 +77,30 @@ export function RecipeFormPage({
   navigate: Navigate
   recipeId?: number
 }) {
+  const ingredientListId = useId()
   const [form, setForm] = useState<RecipeFormState>(emptyRecipeForm)
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [unitOptions, setUnitOptions] = useState<RecipeUnit[]>([])
+  const [openIngredientIndex, setOpenIngredientIndex] = useState<number | null>(null)
+  const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
   const [error, setError] = useState('')
   const editing = recipeId !== undefined
 
-  // Fetch cuisines and unit options on mount
+  // Fetch form option lists on mount
   useEffect(() => {
     let active = true
 
-    const fetchCuisinesAndUnitsList = async () => {
+    const fetchFormOptions = async () => {
       try {
-        const [cuisineResponse, unitResponse] = await Promise.all([
+        const [cuisineResponse, ingredientResponse, unitResponse] = await Promise.all([
           apiFetch<Cuisine[]>('/api/cuisines/'),
+          apiFetch<Ingredient[]>('/api/ingredients/'),
           apiFetch<RecipeUnit[]>('/api/units/'),
         ])
         if (!active) return
         setCuisines(cuisineResponse)
+        setIngredients(ingredientResponse)
         setUnitOptions(unitResponse)
       } catch (requestError) {
         if (!active) return
@@ -97,7 +108,7 @@ export function RecipeFormPage({
       }
     }
 
-    fetchCuisinesAndUnitsList()
+    fetchFormOptions()
 
     return () => {
       active = false
@@ -167,6 +178,80 @@ export function RecipeFormPage({
     }))
   }
 
+  function updateIngredientName(index: number, value: string) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, ingredient_id: null, user_ingredient_id: null, name: value }
+          : item,
+      ),
+    }))
+    setOpenIngredientIndex(index)
+    setActiveIngredientSuggestionIndex(-1)
+  }
+
+  function ingredientSuggestionsFor(value: string) {
+    const normalizedValue = value.trim().toLowerCase()
+    if (!normalizedValue) {
+      return []
+    }
+
+    return ingredients
+      .filter((ingredient) => {
+        const matchesName = ingredient.name.toLowerCase().includes(normalizedValue)
+        const matchesAlias = ingredient.aliases.some((alias) => alias.name.toLowerCase().includes(normalizedValue))
+        return matchesName || matchesAlias
+      })
+      .slice(0, maximumIngredientSuggestions)
+  }
+
+  function chooseIngredient(index: number, ingredient: Ingredient) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              ingredient_id: ingredient.id,
+              user_ingredient_id: null,
+              name: ingredient.name,
+            }
+          : item,
+      ),
+    }))
+    setOpenIngredientIndex(null)
+    setActiveIngredientSuggestionIndex(-1)
+  }
+
+  function handleIngredientKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
+    const suggestions = ingredientSuggestionsFor(form.ingredient_items[index]?.name ?? '')
+
+    if (openIngredientIndex !== index) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIngredientSuggestionIndex((current) => (suggestions.length ? (current + 1) % suggestions.length : -1))
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIngredientSuggestionIndex((current) =>
+        suggestions.length ? (current <= 0 ? suggestions.length - 1 : current - 1) : -1,
+      )
+    }
+
+    if (event.key === 'Enter' && activeIngredientSuggestionIndex >= 0 && suggestions[activeIngredientSuggestionIndex]) {
+      event.preventDefault()
+      chooseIngredient(index, suggestions[activeIngredientSuggestionIndex])
+    }
+
+    if (event.key === 'Escape') {
+      setOpenIngredientIndex(null)
+      setActiveIngredientSuggestionIndex(-1)
+    }
+  }
+
   function updateIngredientUnit(index: number, value: string) {
     const selectedUnit = unitOptions.find((unit) => unit.value === value)
     if (!selectedUnit) {
@@ -180,7 +265,10 @@ export function RecipeFormPage({
   function addIngredient() {
     setForm((current) => ({
       ...current,
-      ingredient_items: [...current.ingredient_items, { name: '', quantity: '', unit: '', note: '' }],
+      ingredient_items: [
+        ...current.ingredient_items,
+        { ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' },
+      ],
     }))
   }
 
@@ -189,12 +277,16 @@ export function RecipeFormPage({
       ...current,
       ingredient_items: current.ingredient_items.filter((_, itemIndex) => itemIndex !== index),
     }))
+    setOpenIngredientIndex(null)
+    setActiveIngredientSuggestionIndex(-1)
   }
 
   function ingredientItemsForPayload(): RecipePayload['ingredient_items'] {
     return form.ingredient_items
       .filter((ingredient) => ingredient.name.trim() && ingredient.quantity)
       .map((item) => ({
+        ingredient_id: item.ingredient_id,
+        user_ingredient_id: item.user_ingredient_id,
         name: item.name.trim(),
         quantity: Number(item.quantity),
         unit: item.unit,
@@ -305,45 +397,100 @@ export function RecipeFormPage({
               <h2>Ingredients</h2>
             </div>
             <div className="ingredient-editor">
-              {form.ingredient_items.map((item, index) => (
-                <div className="ingredient-row" key={`ingredient-${index}`}>
-                  <input
-                    aria-label="Quantity"
-                    placeholder="Qty"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.quantity}
-                    onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
-                  />
-                  <select
-                    aria-label="Unit"
-                    value={item.unit}
-                    onChange={(event) => updateIngredientUnit(index, event.target.value)}
-                  >
-                    {unitOptions.map((unit) => (
-                      <option key={unit.value || 'no-unit'} value={unit.value}>
-                        {unit.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    aria-label="Ingredient name"
-                    placeholder="Ingredient"
-                    value={item.name}
-                    onChange={(event) => updateIngredient(index, 'name', event.target.value)}
-                  />
-                  <input
-                    aria-label="Ingredient note"
-                    placeholder="Note"
-                    value={item.note}
-                    onChange={(event) => updateIngredient(index, 'note', event.target.value)}
-                  />
-                  <button type="button" onClick={() => removeIngredient(index)} disabled={form.ingredient_items.length === 1}>
-                    Remove
-                  </button>
-                </div>
-              ))}
+              {form.ingredient_items.map((item, index) => {
+                const suggestions = ingredientSuggestionsFor(item.name)
+                const showIngredientSuggestions =
+                  openIngredientIndex === index && item.name.trim().length > 0 && item.ingredient_id === null
+                const ingredientSuggestionListId = `${ingredientListId}-ingredient-${index}`
+
+                return (
+                  <div className="ingredient-row" key={`ingredient-${index}`}>
+                    <input
+                      aria-label="Quantity"
+                      placeholder="Qty"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
+                    />
+                    <select
+                      aria-label="Unit"
+                      value={item.unit}
+                      onChange={(event) => updateIngredientUnit(index, event.target.value)}
+                    >
+                      {unitOptions.map((unit) => (
+                        <option key={unit.value || 'no-unit'} value={unit.value}>
+                          {unit.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="ingredient-combobox">
+                      <input
+                        aria-activedescendant={
+                          activeIngredientSuggestionIndex >= 0
+                            ? `${ingredientSuggestionListId}-${activeIngredientSuggestionIndex}`
+                            : undefined
+                        }
+                        aria-autocomplete="list"
+                        aria-controls={ingredientSuggestionListId}
+                        aria-expanded={showIngredientSuggestions}
+                        aria-label="Ingredient name"
+                        placeholder="Ingredient"
+                        role="combobox"
+                        value={item.name}
+                        onBlur={() => setOpenIngredientIndex(null)}
+                        onChange={(event) => updateIngredientName(index, event.target.value)}
+                        onFocus={() => {
+                          setOpenIngredientIndex(index)
+                          setActiveIngredientSuggestionIndex(-1)
+                        }}
+                        onKeyDown={(event) => handleIngredientKeyDown(index, event)}
+                      />
+                      {item.ingredient_id !== null && <span className="ingredient-status success-text">Catalog</span>}
+                      {item.user_ingredient_id !== null && (
+                        <span className="ingredient-status danger-text">Under review</span>
+                      )}
+                      {showIngredientSuggestions && (
+                        <div className="ingredient-suggestions" id={ingredientSuggestionListId} role="listbox">
+                          {suggestions.length ? (
+                            suggestions.map((ingredient, suggestionIndex) => (
+                              <button
+                                aria-selected={suggestionIndex === activeIngredientSuggestionIndex}
+                                className={`ingredient-suggestion ${
+                                  suggestionIndex === activeIngredientSuggestionIndex ? 'active' : ''
+                                }`}
+                                id={`${ingredientSuggestionListId}-${suggestionIndex}`}
+                                key={ingredient.id}
+                                onMouseDown={(event) => {
+                                  event.preventDefault()
+                                  chooseIngredient(index, ingredient)
+                                }}
+                                role="option"
+                                type="button"
+                              >
+                                <span>{ingredient.name}</span>
+                                {ingredient.category && <small>{ingredient.category}</small>}
+                              </button>
+                            ))
+                          ) : (
+                            <p className="ingredient-suggestion-status">No catalog matches</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      aria-label="Ingredient note"
+                      placeholder="Note"
+                      value={item.note}
+                      onChange={(event) => updateIngredient(index, 'note', event.target.value)}
+                    />
+                    <button type="button" onClick={() => removeIngredient(index)} disabled={form.ingredient_items.length === 1}>
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
               <button type="button" className="secondary-button" onClick={addIngredient}>
                 Add ingredient
               </button>

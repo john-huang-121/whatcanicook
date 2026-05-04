@@ -4,7 +4,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Cuisine, Ingredient, Recipe, Unit
+from .models import Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
 from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer, UnitSerializer
 
 
@@ -12,7 +12,11 @@ def visible_recipes_for(user):
     return (
         Recipe.objects.visible_to(user)
         .select_related("created_by")
-        .prefetch_related("recipe_ingredients__ingredient", "recipe_instructions__instruction")
+        .prefetch_related(
+            "recipe_ingredients__ingredient",
+            "recipe_ingredients__user_ingredient",
+            "recipe_instructions__instruction",
+        )
         .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
 
@@ -39,7 +43,14 @@ class IngredientListView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        ingredients = Ingredient.objects.order_by("name")
+        ingredients = Ingredient.objects.prefetch_related("aliases").order_by("name")
+        search_query = normalize_ingredient_name(request.query_params.get("q", ""))
+
+        if search_query:
+            ingredients = ingredients.filter(
+                Q(name__icontains=search_query) | Q(aliases__name__icontains=search_query)
+            ).distinct()
+
         serializer = IngredientSerializer(ingredients, many=True)
         return Response(serializer.data)
 
@@ -62,6 +73,8 @@ class RecipeListView(APIView):
                 | Q(description__icontains=term)
                 | Q(created_by__username__icontains=term)
                 | Q(recipe_ingredients__ingredient__name__icontains=term)
+                | Q(recipe_ingredients__ingredient__aliases__name__icontains=term)
+                | Q(recipe_ingredients__user_ingredient__name__icontains=term)
                 | Q(cuisine__in=matching_cuisines)
             )
             search_filter = term_filter if search_filter is None else search_filter | term_filter
@@ -120,6 +133,7 @@ class RecipeDetailView(APIView):
         recipe = get_object_or_404(
             Recipe.objects.select_related("created_by").prefetch_related(
                 "recipe_ingredients__ingredient",
+                "recipe_ingredients__user_ingredient",
                 "recipe_instructions__instruction",
             ),
             pk=recipe_id,

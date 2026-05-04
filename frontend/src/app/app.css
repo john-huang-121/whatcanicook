@@ -793,6 +793,71 @@ textarea {
   gap: 0.6rem;
 }
 
+.ingredient-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.ingredient-status {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.ingredient-suggestions {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  left: 0;
+  z-index: 25;
+  overflow: hidden;
+  border: 1px solid var(--style-line);
+  border-radius: 1rem;
+  background: #fffdf8;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+}
+
+.ingredient-suggestion {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(217, 95, 50, 0.12);
+  background: #fffdf8;
+  color: var(--style-ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+}
+
+.ingredient-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.ingredient-suggestion:hover,
+.ingredient-suggestion:focus-visible,
+.ingredient-suggestion.active {
+  background: #fff0d6;
+  color: var(--style-primary-dark);
+}
+
+.ingredient-suggestion span {
+  font-weight: 850;
+}
+
+.ingredient-suggestion small,
+.ingredient-suggestion-status {
+  color: var(--style-muted);
+  font-size: 0.85rem;
+}
+
+.ingredient-suggestion-status {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+}
+
 .ingredient-row button {
   border: 1px solid #fecaca;
   border-radius: 0.5rem;

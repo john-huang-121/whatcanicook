@@ -1,8 +1,21 @@
+from pathlib import Path
+
+from django.core.management import call_command
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 
-from ..models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
+from ..models import (
+    Cuisine,
+    Ingredient,
+    Instruction,
+    Recipe,
+    RecipeIngredient,
+    RecipeInstruction,
+    Unit,
+    UserIngredient,
+    UserIngredientStatus,
+)
 
 User = get_user_model()
 
@@ -76,6 +89,8 @@ class RecipeModelTests(TestCase):
     def test_ingredient_str(self):
         self.assertEqual(str(self.salt), "Salt")
         self.assertEqual(str(self.eggs), "Eggs")
+        self.assertEqual(self.salt.name, "salt")
+        self.assertEqual(self.eggs.name, "eggs")
 
     def test_find_all_ingredient_recipes(self):
         salt_recipes = self.salt.find_all_ingredient_recipes()
@@ -90,7 +105,7 @@ class RecipeModelTests(TestCase):
 
     def test_recipe_ingredients_many_to_many(self):
         recipe1_ingredients = set(self.recipe1.ingredients.values_list("name", flat=True))
-        self.assertEqual(recipe1_ingredients, {"Eggs", "Salt"})
+        self.assertEqual(recipe1_ingredients, {"eggs", "salt"})
 
     def test_recipe_instructions_many_to_many(self):
         recipe1_instructions = list(
@@ -116,6 +131,35 @@ class RecipeModelTests(TestCase):
         ri = RecipeIngredient.objects.get(recipe=self.recipe1, ingredient=self.salt)
         self.assertEqual(str(ri), "0.5 teaspoon(s) Salt")
 
+    def test_user_ingredient_approval_creates_canonical_ingredient(self):
+        user_ingredient = UserIngredient.objects.create(user=self.owner, name="Aleppo Pepper")
+        recipe_ingredient = RecipeIngredient.objects.create(
+            recipe=self.recipe2,
+            user_ingredient=user_ingredient,
+            quantity=1,
+            unit=Unit.TEASPOON,
+        )
+
+        approved_ingredient = user_ingredient.approve()
+        recipe_ingredient.refresh_from_db()
+        user_ingredient.refresh_from_db()
+
+        self.assertEqual(approved_ingredient.name, "aleppo pepper")
+        self.assertEqual(user_ingredient.status, UserIngredientStatus.APPROVED)
+        self.assertEqual(recipe_ingredient.ingredient, approved_ingredient)
+        self.assertIsNone(recipe_ingredient.user_ingredient)
+
     def test_recipeinstruction_str(self):
         recipe_instruction = RecipeInstruction.objects.get(recipe=self.recipe1, step_number=1)
         self.assertEqual(str(recipe_instruction), "1. Beat eggs.")
+
+
+class SeedIngredientCommandTests(TestCase):
+    def test_seed_ingredients_command_loads_seed_file(self):
+        seed_path = Path(__file__).resolve().parents[1] / "seed_data" / "ingredients.json"
+
+        call_command("seed_ingredients", path=seed_path, verbosity=0)
+
+        self.assertEqual(Ingredient.objects.count(), 50)
+        self.assertTrue(Ingredient.objects.filter(name="chicken breast").exists())
+        self.assertTrue(Ingredient.objects.filter(aliases__name="chikcen breast").exists())

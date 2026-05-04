@@ -74,16 +74,32 @@ export type RecipeUnit = {
   label: string
 }
 
+export type Ingredient = {
+  id: number
+  name: string
+  category: string
+  aliases: Array<{
+    id: number
+    name: string
+  }>
+}
+
 export type RecipeIngredient = {
   id: number
+  ingredient_id: number | null
+  user_ingredient_id: number | null
   name: string
   quantity: number
   unit: RecipeUnitValue
   unit_label: string
   note: string
+  review_status: string
+  is_custom: boolean
 }
 
 export type RecipeIngredientInput = {
+  ingredient_id: number | null
+  user_ingredient_id: number | null
   name: string
   quantity: string
   unit: RecipeUnitValue
@@ -139,6 +155,8 @@ export type RecipePayload = {
     text: string
   }>
   ingredient_items: Array<{
+    ingredient_id: number | null
+    user_ingredient_id: number | null
     name: string
     quantity: number
     unit: RecipeUnitValue

@@ -2,7 +2,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from recipes.models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
+from recipes.models import (
+    Cuisine,
+    Ingredient,
+    Instruction,
+    Recipe,
+    RecipeIngredient,
+    RecipeInstruction,
+    Unit,
+    UserIngredient,
+    UserIngredientStatus,
+)
 
 User = get_user_model()
 
@@ -75,7 +85,14 @@ class RecipeApiTests(TestCase):
                 {"text": "Serve warm."},
             ],
             "ingredient_items": [
-                {"name": "Salt", "quantity": 1, "unit": Unit.CUP, "note": "fine sea salt"},
+                {
+                    "ingredient_id": self.ingredient.id,
+                    "user_ingredient_id": None,
+                    "name": "Salt",
+                    "quantity": 1,
+                    "unit": Unit.CUP,
+                    "note": "fine sea salt",
+                },
                 {"name": "Pepper", "quantity": 0.5, "unit": Unit.TEASPOON},
             ],
         }
@@ -93,6 +110,13 @@ class RecipeApiTests(TestCase):
         self.assertIn({"value": "teaspoon(s)", "label": "teaspoon(s)"}, response.json())
         self.assertIn({"value": "slice(s)", "label": "slice(s)"}, response.json())
         self.assertIn({"value": "to taste", "label": "to taste"}, response.json())
+
+    def test_ingredients_endpoint_lists_titleized_canonical_ingredients(self):
+        response = self.client.get(reverse("recipes:ingredient-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn({"id": self.ingredient.id, "name": "Salt", "category": "", "aliases": []}, response.json())
+        self.assertEqual(Ingredient.objects.get(id=self.ingredient.id).name, "salt")
 
     def test_create_requires_login(self):
         response = self.client.post(
@@ -121,7 +145,9 @@ class RecipeApiTests(TestCase):
         self.assertEqual(recipe.recipe_instructions.count(), 2)
         self.assertEqual(response.json()["ingredients"][0]["unit_label"], "cup(s)")
         self.assertEqual(response.json()["ingredients"][0]["note"], "fine sea salt")
-        self.assertEqual(recipe.recipe_ingredients.get(ingredient__name="Salt").note, "fine sea salt")
+        self.assertEqual(recipe.recipe_ingredients.get(ingredient__name="salt").note, "fine sea salt")
+        self.assertEqual(recipe.recipe_ingredients.get(user_ingredient__name="pepper").user_ingredient.status, "under_review")
+        self.assertEqual(response.json()["ingredients"][1]["review_status"], "under_review")
 
     def test_anonymous_cannot_view_private_recipe(self):
         response = self.client.get(reverse("recipes:recipe-detail", args=[self.private_recipe.id]))
@@ -195,6 +221,20 @@ class RecipeApiTests(TestCase):
 
     def test_search_matches_ingredient_name(self):
         response = self.client.get(reverse("recipes:recipe-list"), {"q": "Salt"})
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertIn("Public Pasta", recipe_titles)
+
+    def test_search_matches_custom_user_ingredient_name(self):
+        user_ingredient = UserIngredient.objects.create(user=self.owner, name="Aleppo Pepper")
+        RecipeIngredient.objects.create(
+            recipe=self.public_recipe,
+            user_ingredient=user_ingredient,
+            quantity=1,
+            unit=Unit.TEASPOON,
+        )
+
+        response = self.client.get(reverse("recipes:recipe-list"), {"q": "Aleppo"})
         recipe_titles = [recipe["title"] for recipe in response.json()]
 
         self.assertIn("Public Pasta", recipe_titles)
@@ -273,7 +313,8 @@ class RecipeApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.public_recipe.title, "Updated Pasta")
         self.assertEqual(self.public_recipe.recipe_ingredients.count(), 1)
-        self.assertEqual(self.public_recipe.recipe_ingredients.first().ingredient.name, "Tomato")
+        self.assertEqual(self.public_recipe.recipe_ingredients.first().user_ingredient.name, "tomato")
+        self.assertEqual(self.public_recipe.recipe_ingredients.first().user_ingredient.status, UserIngredientStatus.UNDER_REVIEW)
         self.assertEqual(self.public_recipe.recipe_ingredients.first().note, "diced")
 
     def test_owner_can_update_recipe_instructions(self):
