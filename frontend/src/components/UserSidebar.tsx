@@ -1,4 +1,7 @@
-import { AppLink } from './AppLink'
+import type { MouseEvent } from 'react'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
 import type { Navigate } from '../types'
 
 const sidebarItems = [
@@ -9,20 +12,38 @@ const sidebarItems = [
 ]
 
 export function UserSidebar({ path, navigate }: { path: string; navigate: Navigate }) {
+  function handleNavigate(to: string, event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    navigate(to)
+  }
+
   return (
     <aside className="user-sidebar" aria-label="User recipe navigation">
-      <nav className="user-sidebar-nav">
+      <List component="nav" className="user-sidebar-nav" disablePadding>
         {sidebarItems.map((item) => (
-          <AppLink
+          <ListItemButton
+            component="a"
+            href={item.to}
             key={item.to}
-            to={item.to}
-            navigate={navigate}
-            className={`user-sidebar-link ${path === item.to ? 'active' : ''}`}
+            onClick={(event) => handleNavigate(item.to, event)}
+            selected={path === item.to}
+            className="user-sidebar-link"
           >
-            {item.label}
-          </AppLink>
+            <ListItemText primary={item.label} />
+          </ListItemButton>
         ))}
-      </nav>
+      </List>
     </aside>
   )
 }

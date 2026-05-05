@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Avatar from '@mui/material/Avatar'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
@@ -115,61 +119,77 @@ export function ProfilePage({
             <h1>{profile.display_name}</h1>
             <p>{auth.user.email}</p>
           </div>
-          {profile.profile_picture_url && <img src={profile.profile_picture_url} alt={profile.display_name} />}
+          {profile.profile_picture_url && (
+            <Avatar
+              alt={profile.display_name}
+              className="profile-avatar"
+              src={profile.profile_picture_url}
+            />
+          )}
         </section>
 
         <section className="form-shell">
           <p className="eyebrow">Profile Details</p>
           <h2>Edit your profile</h2>
-          {error && <p className="form-error">{error}</p>}
+          {error && <Alert severity="error">{error}</Alert>}
           <form onSubmit={(event) => void submit(event)} className="stacked-form">
             <div className="form-grid">
-              <label>
-                First name
-                <input value={profile.first_name} onChange={(event) => updateProfile('first_name', event.target.value)} />
-              </label>
-              <label>
-                Last name
-                <input value={profile.last_name} onChange={(event) => updateProfile('last_name', event.target.value)} />
-              </label>
+              <TextField
+                label="First name"
+                value={profile.first_name}
+                onChange={(event) => updateProfile('first_name', event.target.value)}
+              />
+              <TextField
+                label="Last name"
+                value={profile.last_name}
+                onChange={(event) => updateProfile('last_name', event.target.value)}
+              />
             </div>
-            <label>
-              Profile picture
-              <input type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-            </label>
+            <div className="file-upload-row">
+              <TextField
+                label="Profile picture"
+                type="file"
+                onChange={(event) => setFile((event.target as HTMLInputElement).files?.[0] ?? null)}
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { accept: 'image/*' } }}
+              />
+              <span className="muted">{file?.name ?? 'No file selected'}</span>
+            </div>
             <div className="form-grid">
-              <label>
-                Twitter/X
-                <input value={profile.twitter_x_url} onChange={(event) => updateProfile('twitter_x_url', event.target.value)} />
-              </label>
-              <label>
-                Instagram
-                <input value={profile.instagram_url} onChange={(event) => updateProfile('instagram_url', event.target.value)} />
-              </label>
-              <label>
-                Facebook
-                <input value={profile.facebook_url} onChange={(event) => updateProfile('facebook_url', event.target.value)} />
-              </label>
-              <label>
-                LinkedIn
-                <input value={profile.linkedin_url} onChange={(event) => updateProfile('linkedin_url', event.target.value)} />
-              </label>
-              <label>
-                Birth date
-                <input
-                  type="date"
-                  value={profile.birth_date ?? ''}
-                  onChange={(event) => updateProfile('birth_date', event.target.value)}
-                />
-              </label>
+              <TextField
+                label="Twitter/X"
+                value={profile.twitter_x_url}
+                onChange={(event) => updateProfile('twitter_x_url', event.target.value)}
+              />
+              <TextField
+                label="Instagram"
+                value={profile.instagram_url}
+                onChange={(event) => updateProfile('instagram_url', event.target.value)}
+              />
+              <TextField
+                label="Facebook"
+                value={profile.facebook_url}
+                onChange={(event) => updateProfile('facebook_url', event.target.value)}
+              />
+              <TextField
+                label="LinkedIn"
+                value={profile.linkedin_url}
+                onChange={(event) => updateProfile('linkedin_url', event.target.value)}
+              />
+              <TextField
+                label="Birth date"
+                type="date"
+                value={profile.birth_date ?? ''}
+                onChange={(event) => updateProfile('birth_date', event.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
             </div>
-            <button type="submit" className="primary-button">
+            <Button type="submit" className="primary-button" variant="contained">
               Save Profile
-            </button>
+            </Button>
           </form>
         </section>
 
-        {recipeError && <p className="form-error">{recipeError}</p>}
+        {recipeError && <Alert severity="error">{recipeError}</Alert>}
         <ProfileRecipeSection title="Public" recipes={groupedRecipes.publicRecipes} navigate={navigate} />
         <ProfileRecipeSection title="Private" recipes={groupedRecipes.privateRecipes} navigate={navigate} />
       </div>

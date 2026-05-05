@@ -1,6 +1,12 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import InputAdornment from '@mui/material/InputAdornment'
+import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
@@ -356,16 +362,21 @@ export function RecipeFormPage({
     <section className="page-band">
       <div className="form-shell">
         <h1>{editing ? 'Update Recipe' : 'Create Recipe'}</h1>
-        {error && <p className="form-error">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <form onSubmit={(event) => void submit(event)} className="stacked-form">
-          <label>
-            Title
-            <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-          </label>
-          <label>
-            Description
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-          </label>
+          <TextField
+            label="Title"
+            value={form.title}
+            onChange={(event) => setForm({ ...form, title: event.target.value })}
+            required
+          />
+          <TextField
+            label="Description"
+            value={form.description}
+            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            multiline
+            minRows={4}
+          />
           <div className="form-grid">
             <div className="form-field">
               <label htmlFor={prepTimeInputId}>Prep Time</label>
@@ -406,35 +417,37 @@ export function RecipeFormPage({
                 }}
               />
             </div>
-            <label>
-              Servings
-              <input
-                type="number"
-                min="1"
-                value={form.servings}
-                onChange={(event) => setForm({ ...form, servings: event.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Cuisine
-              <select value={form.cuisine} onChange={(event) => setForm({ ...form, cuisine: event.target.value })}>
-                {cuisines.map((cuisine) => (
-                  <option key={cuisine.value} value={cuisine.value}>
-                    {cuisine.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={form.is_public}
-              onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
+            <TextField
+              label="Servings"
+              type="number"
+              value={form.servings}
+              onChange={(event) => setForm({ ...form, servings: event.target.value })}
+              required
+              slotProps={{ htmlInput: { min: 1 } }}
             />
-            Public recipe
-          </label>
+            <TextField
+              label="Cuisine"
+              select
+              value={form.cuisine}
+              onChange={(event) => setForm({ ...form, cuisine: event.target.value })}
+            >
+                {cuisines.map((cuisine) => (
+                  <MenuItem key={cuisine.value} value={cuisine.value}>
+                    {cuisine.label}
+                  </MenuItem>
+                ))}
+            </TextField>
+          </div>
+          <FormControlLabel
+            className="checkbox-row"
+            control={
+              <Checkbox
+                checked={form.is_public}
+                onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
+              />
+            }
+            label="Public recipe"
+          />
 
           <section className="content-section">
             <div className="form-section-header">
@@ -450,26 +463,26 @@ export function RecipeFormPage({
 
                 return (
                   <div className="ingredient-row" key={`ingredient-${index}`}>
-                    <input
+                    <TextField
                       aria-label="Quantity"
                       placeholder="Qty"
                       type="number"
-                      min="0"
-                      step="0.01"
                       value={item.quantity}
                       onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
+                      slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                     />
-                    <select
+                    <TextField
                       aria-label="Unit"
+                      select
                       value={item.unit}
                       onChange={(event) => updateIngredientUnit(index, event.target.value)}
                     >
                       {unitOptions.map((unit) => (
-                        <option key={unit.value || 'no-unit'} value={unit.value}>
+                        <MenuItem key={unit.value || 'no-unit'} value={unit.value}>
                           {unit.label}
-                        </option>
+                        </MenuItem>
                       ))}
-                    </select>
+                    </TextField>
                     <div className="ingredient-combobox">
                       <TextField
                         className="mui-suffixed-field ingredient-name-field"
@@ -512,11 +525,12 @@ export function RecipeFormPage({
                         <div className="ingredient-suggestions" id={ingredientSuggestionListId} role="listbox">
                           {suggestions.length ? (
                             suggestions.map((ingredient, suggestionIndex) => (
-                              <button
+                              <ButtonBase
                                 aria-selected={suggestionIndex === activeIngredientSuggestionIndex}
                                 className={`ingredient-suggestion ${
                                   suggestionIndex === activeIngredientSuggestionIndex ? 'active' : ''
                                 }`}
+                                component="button"
                                 id={`${ingredientSuggestionListId}-${suggestionIndex}`}
                                 key={ingredient.id}
                                 onMouseDown={(event) => {
@@ -528,7 +542,7 @@ export function RecipeFormPage({
                               >
                                 <span>{ingredient.name}</span>
                                 {ingredient.category && <small>{ingredient.category}</small>}
-                              </button>
+                              </ButtonBase>
                             ))
                           ) : (
                             <p className="ingredient-suggestion-status">No catalog matches</p>
@@ -536,21 +550,27 @@ export function RecipeFormPage({
                         </div>
                       )}
                     </div>
-                    <input
+                    <TextField
                       aria-label="Ingredient note"
                       placeholder="Note"
                       value={item.note}
                       onChange={(event) => updateIngredient(index, 'note', event.target.value)}
                     />
-                    <button type="button" onClick={() => removeIngredient(index)} disabled={form.ingredient_items.length === 1}>
+                    <Button
+                      type="button"
+                      color="error"
+                      variant="outlined"
+                      onClick={() => removeIngredient(index)}
+                      disabled={form.ingredient_items.length === 1}
+                    >
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 )
               })}
-              <button type="button" className="secondary-button" onClick={addIngredient}>
+              <Button type="button" className="secondary-button" variant="contained" onClick={addIngredient}>
                 Add ingredient
-              </button>
+              </Button>
             </div>
           </section>
 
@@ -562,36 +582,40 @@ export function RecipeFormPage({
               {form.instruction_items.map((item, index) => (
                 <div className="instruction-row" key={`instruction-${index}`}>
                   <span className="step-number">{index + 1}</span>
-                  <textarea
+                  <TextField
                     aria-label={`Instruction step ${index + 1}`}
                     placeholder="Describe this step"
                     value={item.text}
                     onChange={(event) => updateInstruction(index, event.target.value)}
+                    multiline
+                    minRows={3}
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    color="error"
+                    variant="outlined"
                     onClick={() => removeInstruction(index)}
                     disabled={form.instruction_items.length === 1}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ))}
-              <button type="button" className="secondary-button" onClick={addInstruction}>
+              <Button type="button" className="secondary-button" variant="contained" onClick={addInstruction}>
                 Add instruction step
-              </button>
+              </Button>
             </div>
           </section>
 
           <div className="action-row">
-            <button type="submit" className="primary-button">
+            <Button type="submit" className="primary-button" variant="contained">
               {editing ? 'Save Changes' : 'Create Recipe'}
-            </button>
+            </Button>
             {editing && recipeId && (
-              <button type="button" className="text-button" onClick={() => navigate(`/recipes/${recipeId}`)}>
+              <Button type="button" className="text-button" variant="text" onClick={() => navigate(`/recipes/${recipeId}`)}>
                 Cancel
-              </button>
+              </Button>
             )}
           </div>
         </form>

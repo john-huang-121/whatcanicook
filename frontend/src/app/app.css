@@ -24,7 +24,7 @@
 .detail-header,
 .form-section-header,
 .profile-summary,
-.recipe-list button {
+.recipe-list-item {
   display: flex;
   align-items: center;
 }
@@ -72,12 +72,12 @@
   gap: 0.7rem;
 }
 
-.nav-links button,
+.nav-links button:not(.MuiButtonBase-root),
 .text-button,
-.mini-actions button,
-.recipe-card button,
-.recipe-list button,
-.cuisine-grid button {
+.mini-actions button:not(.MuiButtonBase-root),
+.recipe-card button:not(.MuiButtonBase-root),
+.recipe-list button:not(.MuiButtonBase-root),
+.cuisine-grid button:not(.MuiButtonBase-root) {
   border: 0;
   background: transparent;
   color: #111827;
@@ -85,9 +85,9 @@
   font: inherit;
 }
 
-.nav-links button,
+.nav-links button:not(.MuiButtonBase-root),
 .text-button,
-.mini-actions button {
+.mini-actions button:not(.MuiButtonBase-root) {
   font-weight: 700;
 }
 
@@ -127,6 +127,22 @@
 .avatar-button span {
   font-size: 0.9rem;
   font-weight: 850;
+}
+
+.avatar-button .MuiAvatar-root {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.account-dropdown-menu .MuiPaper-root {
+  border: 1px solid #fed7aa;
+  border-radius: 0.85rem;
+  background: #fffaf0;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
 }
 
 .account-dropdown {
@@ -350,7 +366,7 @@ p {
   text-align: left;
 }
 
-.recipe-search-form label {
+.recipe-search-form label:not(.MuiFormLabel-root) {
   color: #374151;
   font-weight: 800;
 }
@@ -366,12 +382,12 @@ p {
   flex: 1;
 }
 
-.recipe-search-controls input,
+.recipe-search-controls .MuiFormControl-root,
 .recipe-search-combobox {
   flex: 1;
 }
 
-.recipe-search-controls input,
+.recipe-search-controls .MuiOutlinedInput-root,
 .recipe-search-controls .primary-button,
 .recipe-search-controls .text-button {
   height: 3rem;
@@ -379,10 +395,17 @@ p {
   margin-top: 0;
 }
 
-.recipe-search-controls input {
-  display: block;
-  line-height: 1.2;
-  padding-block: 0;
+.recipe-search-autocomplete .MuiInputBase-root {
+  align-items: center;
+}
+
+.recipe-search-autocomplete .MuiInputBase-input {
+  padding-block: 0 !important;
+}
+
+.recipe-search-autocomplete .MuiInputLabel-root:not(.MuiInputLabel-shrink) {
+  top: 50%;
+  transform: translate(14px, -50%) scale(1);
 }
 
 .recipe-search-controls .primary-button,
@@ -392,11 +415,6 @@ p {
 }
 
 .recipe-search-suggestions {
-  position: absolute;
-  top: calc(100% + 0.45rem);
-  right: 0;
-  left: 0;
-  z-index: 30;
   overflow: hidden;
   border: 1px solid #fed7aa;
   border-radius: 0.75rem;
@@ -404,6 +422,11 @@ p {
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
 }
 
+.recipe-search-listbox {
+  padding: 0 !important;
+}
+
+.recipe-search-option,
 .recipe-search-suggestion,
 .recipe-search-suggestion-status {
   width: 100%;
@@ -412,6 +435,7 @@ p {
   text-align: left;
 }
 
+.recipe-search-option,
 .recipe-search-suggestion {
   display: grid;
   gap: 0.2rem;
@@ -423,10 +447,18 @@ p {
   font: inherit;
 }
 
+.recipe-search-option:not(:last-child),
+.recipe-search-suggestion:last-child {
+  border-bottom: 1px solid #ffedd5;
+}
+
+.recipe-search-option:last-child,
 .recipe-search-suggestion:last-child {
   border-bottom: 0;
 }
 
+.recipe-search-option.Mui-focused,
+.recipe-search-option[aria-selected="true"],
 .recipe-search-suggestion:hover,
 .recipe-search-suggestion:focus-visible,
 .recipe-search-suggestion.active {
@@ -438,6 +470,7 @@ p {
   font-weight: 850;
 }
 
+.recipe-search-option small,
 .recipe-search-suggestion small,
 .recipe-search-suggestion-status {
   color: #6b7280;
@@ -515,6 +548,14 @@ p {
   height: 100%;
   padding: 0;
   text-align: left;
+}
+
+.recipe-card-button {
+  display: block !important;
+  width: 100%;
+  height: 100%;
+  padding: 0 !important;
+  text-align: left !important;
 }
 
 .recipe-card img {
@@ -731,7 +772,7 @@ p {
   gap: 1rem;
 }
 
-.stacked-form label,
+.stacked-form label:not(.MuiFormLabel-root),
 .form-field {
   display: grid;
   gap: 0.35rem;
@@ -739,12 +780,24 @@ p {
   font-weight: 700;
 }
 
+.stacked-form .MuiFormLabel-root,
+.recipe-search-form .MuiFormLabel-root {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.16rem;
+}
+
+.stacked-form .MuiFormLabel-asterisk,
+.recipe-search-form .MuiFormLabel-asterisk {
+  margin-left: 0;
+}
+
 input:not(.MuiInputBase-input),
-textarea,
+textarea:not(.MuiInputBase-input),
 select {
   width: 100%;
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 0.35rem;
   box-sizing: border-box;
   color: #111827;
   font: inherit;
@@ -754,7 +807,7 @@ select {
 
 .mui-suffixed-field .MuiOutlinedInput-root {
   min-height: 2.65rem;
-  border-radius: 0.5rem;
+  border-radius: 0.35rem;
   background: #fff;
   color: #111827;
   font: inherit;
@@ -768,6 +821,7 @@ select {
 }
 
 .mui-suffixed-field .MuiOutlinedInput-notchedOutline {
+  border-radius: 0.35rem;
   border-color: #d1d5db;
 }
 
@@ -807,7 +861,7 @@ select {
   color: #a84625;
 }
 
-textarea {
+textarea:not(.MuiInputBase-input) {
   min-height: 7rem;
   resize: vertical;
 }
@@ -988,6 +1042,22 @@ textarea {
   object-fit: cover;
 }
 
+.profile-avatar {
+  width: 7rem !important;
+  height: 7rem !important;
+}
+
+.file-upload-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.file-upload-row .MuiFormControl-root {
+  flex: 1 1 16rem;
+}
+
 .recipe-list-section {
   margin-top: 1rem;
 }
@@ -997,7 +1067,7 @@ textarea {
   gap: 0.7rem;
 }
 
-.recipe-list button {
+.recipe-list-item {
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
@@ -1007,6 +1077,7 @@ textarea {
   text-align: left;
 }
 
+.recipe-list .MuiListItemText-secondary,
 .recipe-list small {
   display: block;
   color: #6b7280;
@@ -1017,6 +1088,11 @@ textarea {
   justify-items: start;
   max-width: 560px;
   gap: 0.5rem;
+}
+
+.loading-panel {
+  justify-items: center;
+  text-align: center;
 }
 
 .dashboard-shell {
@@ -1197,9 +1273,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .profile-summary img {
-    width: 5.5rem;
-    height: 5.5rem;
+  .profile-summary img,
+  .profile-avatar {
+    width: 5.5rem !important;
+    height: 5.5rem !important;
   }
 
   .recipe-search-controls {
@@ -1264,7 +1341,8 @@ textarea {
 .avatar-button,
 .user-sidebar-link:hover,
 .user-sidebar-link:focus-visible,
-.user-sidebar-link.active {
+.user-sidebar-link.active,
+.user-sidebar-link.Mui-selected {
   background: #fff0d6 !important;
   color: #8a431f !important;
 }
@@ -1359,26 +1437,27 @@ textarea {
 }
 
 input:not(.MuiInputBase-input),
-textarea,
+textarea:not(.MuiInputBase-input),
 select {
   border-color: var(--style-line);
-  border-radius: 1rem;
+  border-radius: 0.35rem;
   background: #fffdf8;
 }
 
 input:not(.MuiInputBase-input):focus,
-textarea:focus,
+textarea:not(.MuiInputBase-input):focus,
 select:focus {
   outline: 3px solid rgba(217, 95, 50, 0.16);
   border-color: var(--style-primary);
 }
 
 .mui-suffixed-field .MuiOutlinedInput-root {
-  border-radius: 1rem;
+  border-radius: 0.35rem;
   background: #fffdf8;
 }
 
 .mui-suffixed-field .MuiOutlinedInput-notchedOutline {
+  border-radius: 0.35rem;
   border-color: var(--style-line);
 }
 
@@ -1402,14 +1481,14 @@ select:focus {
     border-color 180ms ease;
 }
 
-.recipe-card:has(button:hover),
-.recipe-card:has(button:focus-visible) {
+.recipe-card:has(.recipe-card-button:hover),
+.recipe-card:has(.recipe-card-button:focus-visible) {
   border-color: rgba(217, 95, 50, 0.38);
   box-shadow: 0 26px 56px rgba(185, 91, 39, 0.18);
   transform: translateY(-3px);
 }
 
-.recipe-card button:hover {
+.recipe-card-button:hover {
   color: inherit;
   transform: none;
 }
@@ -1432,7 +1511,7 @@ select:focus {
   transition: transform 220ms ease;
 }
 
-.recipe-card:has(button:hover) .recipe-card-image img {
+.recipe-card:has(.recipe-card-button:hover) .recipe-card-image img {
   transform: scale(1.03);
 }
 
@@ -1517,7 +1596,7 @@ select:focus {
 
 .ingredient-list li,
 .instruction-list li,
-.recipe-list button {
+.recipe-list-item {
   border-color: rgba(217, 95, 50, 0.13);
   border-radius: 1rem;
   background: #fffdf8;

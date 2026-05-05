@@ -1,9 +1,13 @@
+import CircularProgress from '@mui/material/CircularProgress'
+import Paper from '@mui/material/Paper'
+
 export function LoadingPage({ message }: { message: string }) {
   return (
     <section className="page-band">
-      <div className="message-panel">
+      <Paper className="message-panel loading-panel" elevation={0}>
+        <CircularProgress size={28} thickness={4} />
         <p>{message}</p>
-      </div>
+      </Paper>
     </section>
   )
 }

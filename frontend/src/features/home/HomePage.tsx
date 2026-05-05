@@ -1,4 +1,4 @@
-import { AppLink } from '../../components/AppLink'
+import Button from '@mui/material/Button'
 import type { AuthState, Navigate } from '../../types'
 
 export function HomePage({ auth, navigate }: { auth: AuthState; navigate: Navigate }) {
@@ -9,12 +9,22 @@ export function HomePage({ auth, navigate }: { auth: AuthState; navigate: Naviga
         <h1>Explore recipes from different cuisines.</h1>
         <p>Browse what others are cooking, then craft your own recipes and decide what stays private.</p>
         <div className="action-row">
-          <AppLink to={auth.authenticated ? '/dashboard' : '/recipes'} navigate={navigate} className="primary-button">
+          <Button
+            type="button"
+            className="primary-button"
+            variant="contained"
+            onClick={() => navigate(auth.authenticated ? '/dashboard' : '/recipes')}
+          >
             {auth.authenticated ? 'Open dashboard' : 'Get started'}
-          </AppLink>
-          <AppLink to={auth.authenticated ? '/recipes/new' : '/signup'} navigate={navigate} className="text-button">
+          </Button>
+          <Button
+            type="button"
+            className="text-button"
+            variant="text"
+            onClick={() => navigate(auth.authenticated ? '/recipes/new' : '/signup')}
+          >
             {auth.authenticated ? 'Create a recipe' : 'Create an account'}
-          </AppLink>
+          </Button>
         </div>
       </div>
     </section>

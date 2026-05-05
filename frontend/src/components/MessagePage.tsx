@@ -1,3 +1,5 @@
+import Button from '@mui/material/Button'
+import Paper from '@mui/material/Paper'
 import type { Navigate } from '../types'
 
 export function MessagePage({
@@ -13,13 +15,13 @@ export function MessagePage({
 }) {
   return (
     <section className="page-band">
-      <div className="message-panel">
+      <Paper className="message-panel" elevation={0}>
         <h1>{title}</h1>
         <p>{message}</p>
-        <button type="button" className="primary-button" onClick={() => navigate(action?.to ?? '/recipes')}>
+        <Button type="button" className="primary-button" variant="contained" onClick={() => navigate(action?.to ?? '/recipes')}>
           {action?.label ?? 'Browse recipes'}
-        </button>
-      </div>
+        </Button>
+      </Paper>
     </section>
   )
 }

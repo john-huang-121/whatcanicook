@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AppLink } from '../../components/AppLink'
+import Button from '@mui/material/Button'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
@@ -88,9 +88,9 @@ export function RecipeCollectionPage({
           <p className="eyebrow">{config.eyebrow}</p>
           <h1>{config.title}</h1>
           {kind === 'mine' && (
-            <AppLink to="/recipes/new" navigate={navigate} className="primary-button">
+            <Button type="button" className="primary-button" variant="contained" onClick={() => navigate('/recipes/new')}>
               Create Recipe
-            </AppLink>
+            </Button>
           )}
         </div>
         {recipes.length ? <RecipeGrid recipes={recipes} navigate={navigate} /> : <p className="empty-state">{config.empty}</p>}

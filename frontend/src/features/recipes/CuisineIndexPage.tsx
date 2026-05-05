@@ -1,5 +1,9 @@
-import { useEffect, useId, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import { MessagePage } from '../../components/MessagePage'
 import { RecipeGrid } from './components/RecipeGrid'
 import { apiFetch } from '../../lib/api'
@@ -18,7 +22,6 @@ const minimumAutocompleteLength = 2
 const maximumSuggestions = 6
 
 export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Navigate; searchQuery?: string }) {
-  const suggestionListId = useId()
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
   const [searchInput, setSearchInput] = useState(searchQuery)
   const [searchState, setSearchState] = useState<SearchState>({
@@ -32,7 +35,6 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
     error: '',
   })
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const normalizedSearchQuery = searchQuery.trim()
@@ -106,7 +108,6 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
             recipes: response.slice(0, maximumSuggestions),
             error: '',
           })
-          setActiveSuggestionIndex(-1)
         } catch (requestError) {
           if (!active) return
           setSuggestionState({
@@ -114,7 +115,6 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
             recipes: [],
             error: formatErrors(requestError),
           })
-          setActiveSuggestionIndex(-1)
         }
       }
 
@@ -134,41 +134,6 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
     navigate(nextQuery ? `/recipes?q=${encodeURIComponent(nextQuery)}` : '/recipes')
   }
 
-  function chooseSuggestion(recipe: Recipe) {
-    setSuggestionsOpen(false)
-    setActiveSuggestionIndex(-1)
-    navigate(`/recipes/${recipe.id}`)
-  }
-
-  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    const suggestions =
-      suggestionState.query === normalizedSuggestionQuery && shouldFetchSuggestions ? suggestionState.recipes : []
-
-    if (!suggestionsOpen || !shouldFetchSuggestions) return
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      setActiveSuggestionIndex((current) => (suggestions.length ? (current + 1) % suggestions.length : -1))
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      setActiveSuggestionIndex((current) =>
-        suggestions.length ? (current <= 0 ? suggestions.length - 1 : current - 1) : -1,
-      )
-    }
-
-    if (event.key === 'Enter' && activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
-      event.preventDefault()
-      chooseSuggestion(suggestions[activeSuggestionIndex])
-    }
-
-    if (event.key === 'Escape') {
-      setSuggestionsOpen(false)
-      setActiveSuggestionIndex(-1)
-    }
-  }
-
   const searchLoading = hasSearch && searchState.query !== normalizedSearchQuery
   const searchError = hasSearch && searchState.query === normalizedSearchQuery ? searchState.error : ''
   const searchResults = searchState.query === normalizedSearchQuery ? searchState.recipes : []
@@ -179,6 +144,7 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
   const suggestions =
     suggestionsOpen && suggestionState.query === normalizedSuggestionQuery ? suggestionState.recipes : []
   const showSuggestions = suggestionsOpen && shouldFetchSuggestions
+  const noSuggestionText = suggestionError || 'No quick matches. Press Search to see all results.'
 
   if (error && !hasSearch) return <MessagePage title="Cuisines unavailable" message={error} navigate={navigate} />
 
@@ -190,68 +156,62 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
           <h1>Cuisines</h1>
           <p>Cuisines reflect ingredients, techniques, and traditions from a culture, region, or country.</p>
           <form className="recipe-search-form" onSubmit={submitSearch}>
-            <label htmlFor="recipe-search">Search recipes</label>
             <div className="recipe-search-controls">
               <div className="recipe-search-combobox">
-                <input
-                  id="recipe-search"
-                  role="combobox"
-                  aria-autocomplete="list"
-                  aria-controls={suggestionListId}
-                  aria-expanded={showSuggestions}
-                  aria-activedescendant={
-                    activeSuggestionIndex >= 0 ? `${suggestionListId}-${activeSuggestionIndex}` : undefined
-                  }
-                  value={searchInput}
-                  onBlur={() => setSuggestionsOpen(false)}
-                  onChange={(event) => {
-                    setSearchInput(event.target.value)
-                    setSuggestionsOpen(true)
-                    setActiveSuggestionIndex(-1)
+                <Autocomplete<Recipe, false, false, true>
+                  className="recipe-search-autocomplete"
+                  freeSolo
+                  filterOptions={(options) => options}
+                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.title)}
+                  inputValue={searchInput}
+                  isOptionEqualToValue={(option, value) => typeof value !== 'string' && option.id === value.id}
+                  loading={suggestionsLoading}
+                  loadingText="Finding matching recipes..."
+                  noOptionsText={noSuggestionText}
+                  onChange={(_, value) => {
+                    if (typeof value === 'object' && value !== null) {
+                      setSuggestionsOpen(false)
+                      navigate(`/recipes/${value.id}`)
+                    }
                   }}
-                  onFocus={() => setSuggestionsOpen(true)}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder="Search by recipe, ingredient, cuisine, or cook"
+                  onClose={() => setSuggestionsOpen(false)}
+                  onInputChange={(_, value, reason) => {
+                    if (reason === 'reset') return
+                    setSearchInput(value)
+                    setSuggestionsOpen(true)
+                  }}
+                  onOpen={() => setSuggestionsOpen(true)}
+                  open={showSuggestions}
+                  options={suggestions}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      id="recipe-search"
+                      label="Search recipes"
+                      placeholder="Search by recipe, ingredient, cuisine, or cook"
+                    />
+                  )}
+                  renderOption={(props, recipe) => (
+                    <li {...props} className={`${props.className ?? ''} recipe-search-option`}>
+                      <span>{recipe.title}</span>
+                      <small>
+                        {recipe.cuisine_label} / {recipe.total_time} min / by {recipe.created_by_username}
+                      </small>
+                    </li>
+                  )}
+                  slotProps={{
+                    paper: { className: 'recipe-search-suggestions' },
+                    listbox: { className: 'recipe-search-listbox' },
+                  }}
                 />
-                {showSuggestions && (
-                  <div className="recipe-search-suggestions" id={suggestionListId} role="listbox">
-                    {suggestionError ? (
-                      <p className="recipe-search-suggestion-status">{suggestionError}</p>
-                    ) : suggestionsLoading ? (
-                      <p className="recipe-search-suggestion-status">Finding matching recipes...</p>
-                    ) : suggestions.length ? (
-                      suggestions.map((recipe, index) => (
-                        <button
-                          aria-selected={index === activeSuggestionIndex}
-                          className={`recipe-search-suggestion ${index === activeSuggestionIndex ? 'active' : ''}`}
-                          id={`${suggestionListId}-${index}`}
-                          key={recipe.id}
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            chooseSuggestion(recipe)
-                          }}
-                          role="option"
-                          type="button"
-                        >
-                          <span>{recipe.title}</span>
-                          <small>
-                            {recipe.cuisine_label} / {recipe.total_time} min / by {recipe.created_by_username}
-                          </small>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="recipe-search-suggestion-status">No quick matches. Press Search to see all results.</p>
-                    )}
-                  </div>
-                )}
               </div>
-              <button type="submit" className="primary-button">
+              <Button type="submit" className="primary-button" variant="contained">
                 Search
-              </button>
+              </Button>
               {hasSearch && (
-                <button type="button" className="text-button" onClick={() => navigate('/recipes')}>
+                <Button type="button" className="text-button" variant="text" onClick={() => navigate('/recipes')}>
                   Clear
-                </button>
+                </Button>
               )}
             </div>
           </form>
@@ -265,7 +225,7 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
               </div>
             </div>
             {searchError ? (
-              <p className="form-error">{searchError}</p>
+              <Alert severity="error">{searchError}</Alert>
             ) : searchLoading ? (
               <p className="muted">Searching recipes...</p>
             ) : searchResults.length ? (
@@ -279,9 +239,14 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
         ) : (
           <div className="cuisine-grid">
             {cuisines.map((cuisine) => (
-              <button key={cuisine.value} type="button" onClick={() => navigate(`/recipes/cuisine/${cuisine.value}`)}>
+              <Button
+                key={cuisine.value}
+                type="button"
+                variant="outlined"
+                onClick={() => navigate(`/recipes/cuisine/${cuisine.value}`)}
+              >
                 {cuisine.label}
-              </button>
+              </Button>
             ))}
           </div>
         )}

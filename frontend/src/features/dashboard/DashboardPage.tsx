@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AppLink } from '../../components/AppLink'
+import Button from '@mui/material/Button'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
@@ -47,9 +47,9 @@ export function DashboardPage({ auth, navigate }: { auth: AuthState; navigate: N
             <h1>Your cooking stream</h1>
             <p>Fresh recipes from people you follow, plus the collection you saved for later.</p>
           </div>
-          <AppLink to="/recipes/new" navigate={navigate} className="primary-button">
+          <Button type="button" className="primary-button" variant="contained" onClick={() => navigate('/recipes/new')}>
             Create Recipe
-          </AppLink>
+          </Button>
         </section>
 
         <section className="stats-grid" aria-label="Your cooking stats">
@@ -77,9 +77,9 @@ export function DashboardPage({ auth, navigate }: { auth: AuthState; navigate: N
               <p className="eyebrow">Feed</p>
               <h2>New from people you follow</h2>
             </div>
-            <AppLink to="/recipes" navigate={navigate} className="text-button">
+            <Button type="button" className="text-button" variant="text" onClick={() => navigate('/recipes')}>
               Find cooks
-            </AppLink>
+            </Button>
           </div>
           {dashboard.feed.length ? (
             <RecipeGrid recipes={dashboard.feed} navigate={navigate} />

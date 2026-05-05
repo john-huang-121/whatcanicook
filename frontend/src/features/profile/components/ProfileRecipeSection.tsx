@@ -1,3 +1,8 @@
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
 import type { Navigate, Recipe } from '../../../types'
 
 export function ProfileRecipeSection({ title, recipes, navigate }: { title: string; recipes: Recipe[]; navigate: Navigate }) {
@@ -9,23 +14,25 @@ export function ProfileRecipeSection({ title, recipes, navigate }: { title: stri
           <h2>{title}</h2>
         </div>
         {title === 'Public' && (
-          <button type="button" className="primary-button" onClick={() => navigate('/recipes/new')}>
+          <Button type="button" className="primary-button" variant="contained" onClick={() => navigate('/recipes/new')}>
             New Recipe
-          </button>
+          </Button>
         )}
       </div>
       {recipes.length ? (
-        <div className="recipe-list">
+        <List className="recipe-list" disablePadding>
           {recipes.map((recipe) => (
-            <button key={recipe.id} type="button" onClick={() => navigate(`/recipes/${recipe.id}`)}>
-              <span>
-                <strong>{recipe.title}</strong>
-                <small>{recipe.published_date}</small>
-              </span>
-              <em className={recipe.is_public ? 'success-text' : 'danger-text'}>{recipe.is_public ? 'Public' : 'Private'}</em>
-            </button>
+            <ListItemButton key={recipe.id} className="recipe-list-item" onClick={() => navigate(`/recipes/${recipe.id}`)}>
+              <ListItemText primary={recipe.title} secondary={recipe.published_date} />
+              <Chip
+                color={recipe.is_public ? 'success' : 'error'}
+                label={recipe.is_public ? 'Public' : 'Private'}
+                size="small"
+                variant="outlined"
+              />
+            </ListItemButton>
           ))}
-        </div>
+        </List>
       ) : (
         <p className="muted">You do not have any {title.toLowerCase()} recipes.</p>
       )}

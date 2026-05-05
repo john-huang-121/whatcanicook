@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
+import Link from '@mui/material/Link'
 import type { Navigate } from '../types'
 
 export function AppLink({
@@ -29,8 +30,8 @@ export function AppLink({
   }
 
   return (
-    <a href={to} className={className} onClick={onClick}>
+    <Link href={to} className={className} onClick={onClick} underline="none">
       {children}
-    </a>
+    </Link>
   )
 }

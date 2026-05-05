@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import { AppLink } from '../../components/AppLink'
 import { AuthPanel } from './components/AuthPanel'
 import { apiFetch } from '../../lib/api'
@@ -29,18 +32,23 @@ export function LoginPage({ setAuth, navigate }: { setAuth: SetAuth; navigate: N
   return (
     <AuthPanel title="Log In">
       <form onSubmit={(event) => void submit(event)} className="stacked-form">
-        {error && <p className="form-error">{error}</p>}
-        <label>
-          Username or email
-          <input value={login} onChange={(event) => setLogin(event.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-        </label>
-        <button type="submit" className="primary-button">
+        {error && <Alert severity="error">{error}</Alert>}
+        <TextField
+          label="Username or email"
+          value={login}
+          onChange={(event) => setLogin(event.target.value)}
+          required
+        />
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        <Button type="submit" className="primary-button" variant="contained">
           Log In
-        </button>
+        </Button>
         <p className="muted">
           Need an account?{' '}
           <AppLink to="/signup" navigate={navigate}>
