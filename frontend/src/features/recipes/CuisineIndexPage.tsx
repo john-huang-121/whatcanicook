@@ -21,7 +21,15 @@ type SuggestionState = SearchState
 const minimumAutocompleteLength = 2
 const maximumSuggestions = 6
 
-export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Navigate; searchQuery?: string }) {
+export function CuisineIndexPage({
+  browseMode = 'cuisine',
+  navigate,
+  searchQuery = '',
+}: {
+  browseMode?: 'cuisine' | 'ingredient'
+  navigate: Navigate
+  searchQuery?: string
+}) {
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
   const [searchInput, setSearchInput] = useState(searchQuery)
   const [searchState, setSearchState] = useState<SearchState>({
@@ -35,14 +43,19 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
     error: '',
   })
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(browseMode !== 'ingredient')
   const [error, setError] = useState('')
   const normalizedSearchQuery = searchQuery.trim()
   const hasSearch = normalizedSearchQuery.length > 0
   const normalizedSuggestionQuery = searchInput.trim()
   const shouldFetchSuggestions = normalizedSuggestionQuery.length >= minimumAutocompleteLength
+  const browseBasePath = browseMode === 'ingredient' ? '/recipes/ingredients' : '/recipes'
 
   useEffect(() => {
+    if (browseMode === 'ingredient') {
+      return
+    }
+
     let active = true
 
     apiFetch<Cuisine[]>('/api/cuisines/')
@@ -62,7 +75,7 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
     return () => {
       active = false
     }
-  }, [])
+  }, [browseMode])
 
   useEffect(() => {
     if (!normalizedSearchQuery) return
@@ -131,7 +144,7 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
     event.preventDefault()
     setSuggestionsOpen(false)
     const nextQuery = searchInput.trim()
-    navigate(nextQuery ? `/recipes?q=${encodeURIComponent(nextQuery)}` : '/recipes')
+    navigate(nextQuery ? `${browseBasePath}?q=${encodeURIComponent(nextQuery)}` : browseBasePath)
   }
 
   const searchLoading = hasSearch && searchState.query !== normalizedSearchQuery
@@ -153,8 +166,12 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
       <div className="page-inner">
         <div className="section-heading centered">
           <p className="eyebrow">Browse</p>
-          <h1>Cuisines</h1>
-          <p>Cuisines reflect ingredients, techniques, and traditions from a culture, region, or country.</p>
+          <h1>{browseMode === 'ingredient' ? 'Recipes by Ingredient' : 'Cuisines'}</h1>
+          <p>
+            {browseMode === 'ingredient'
+              ? 'Search by ingredient to find recipes that use what you already have.'
+              : 'Cuisines reflect ingredients, techniques, and traditions from a culture, region, or country.'}
+          </p>
           <form className="recipe-search-form" onSubmit={submitSearch}>
             <div className="recipe-search-controls">
               <div className="recipe-search-combobox">
@@ -209,7 +226,7 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
                 Search
               </Button>
               {hasSearch && (
-                <Button type="button" className="text-button" variant="text" onClick={() => navigate('/recipes')}>
+                <Button type="button" className="text-button" variant="text" onClick={() => navigate(browseBasePath)}>
                   Clear
                 </Button>
               )}
@@ -234,6 +251,8 @@ export function CuisineIndexPage({ navigate, searchQuery = '' }: { navigate: Nav
               <p className="empty-state">No recipes matched "{normalizedSearchQuery}". Try a recipe name, ingredient, cuisine, or cook.</p>
             )}
           </section>
+        ) : browseMode === 'ingredient' ? (
+          <p className="empty-state">Search for an ingredient above to discover matching recipes.</p>
         ) : loading ? (
           <p className="muted">Loading cuisines...</p>
         ) : (

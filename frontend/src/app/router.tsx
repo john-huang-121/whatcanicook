@@ -34,6 +34,15 @@ export function AppRouter({
   if (pathname === '/dashboard') return <DashboardPage auth={auth} navigate={navigate} />
   if (pathname === '/recipes')
     return <CuisineIndexPage key={searchParams.get('q') ?? ''} navigate={navigate} searchQuery={searchParams.get('q') ?? ''} />
+  if (pathname === '/recipes/ingredients')
+    return (
+      <CuisineIndexPage
+        key={`ingredients-${searchParams.get('q') ?? ''}`}
+        browseMode="ingredient"
+        navigate={navigate}
+        searchQuery={searchParams.get('q') ?? ''}
+      />
+    )
   if (pathname === '/recipes/new') return <RecipeFormPage auth={auth} navigate={navigate} />
   if (pathname === '/recipes/mine') return <RecipeCollectionPage key="mine" auth={auth} kind="mine" navigate={navigate} />
   if (pathname === '/recipes/saved') return <RecipeCollectionPage key="saved" auth={auth} kind="saved" navigate={navigate} />
