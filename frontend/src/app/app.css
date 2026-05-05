@@ -697,6 +697,10 @@ p {
   padding: 0.8rem 1rem;
 }
 
+.ingredient-review-status {
+  color: #a84625;
+}
+
 .instruction-list {
   display: grid;
   gap: 0.6rem;
@@ -727,14 +731,15 @@ p {
   gap: 1rem;
 }
 
-.stacked-form label {
+.stacked-form label,
+.form-field {
   display: grid;
   gap: 0.35rem;
   color: #374151;
   font-weight: 700;
 }
 
-input,
+input:not(.MuiInputBase-input),
 textarea,
 select {
   width: 100%;
@@ -745,6 +750,61 @@ select {
   font: inherit;
   min-height: 2.65rem;
   padding: 0.65rem 0.75rem;
+}
+
+.mui-suffixed-field .MuiOutlinedInput-root {
+  min-height: 2.65rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+}
+
+.mui-suffixed-field .MuiOutlinedInput-input {
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+}
+
+.mui-suffixed-field .MuiOutlinedInput-notchedOutline {
+  border-color: #d1d5db;
+}
+
+.mui-suffixed-field .MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 0 0 0 3px rgba(217, 95, 50, 0.16);
+}
+
+.mui-suffixed-field
+  .MuiOutlinedInput-root.Mui-focused
+  .MuiOutlinedInput-notchedOutline {
+  border-color: var(--style-primary, #d95f32);
+  border-width: 1px;
+}
+
+.mui-suffixed-field .MuiInputAdornment-root {
+  color: #6b7280;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.mui-suffixed-field .field-suffix {
+  white-space: nowrap;
+}
+
+.mui-suffixed-field .ingredient-source-suffix {
+  border-radius: 999px;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+}
+
+.mui-suffixed-field .ingredient-source-suffix.catalog {
+  color: #14532d;
+}
+
+.mui-suffixed-field .ingredient-source-suffix.user {
+  color: #a84625;
 }
 
 textarea {
@@ -1298,7 +1358,7 @@ textarea {
   color: var(--style-primary-dark);
 }
 
-input,
+input:not(.MuiInputBase-input),
 textarea,
 select {
   border-color: var(--style-line);
@@ -1306,11 +1366,24 @@ select {
   background: #fffdf8;
 }
 
-input:focus,
+input:not(.MuiInputBase-input):focus,
 textarea:focus,
 select:focus {
   outline: 3px solid rgba(217, 95, 50, 0.16);
   border-color: var(--style-primary);
+}
+
+.mui-suffixed-field .MuiOutlinedInput-root {
+  border-radius: 1rem;
+  background: #fffdf8;
+}
+
+.mui-suffixed-field .MuiOutlinedInput-notchedOutline {
+  border-color: var(--style-line);
+}
+
+.mui-suffixed-field .MuiInputAdornment-root {
+  color: var(--style-muted);
 }
 
 .recipe-grid {

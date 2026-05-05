@@ -1,5 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
+import InputAdornment from '@mui/material/InputAdornment'
+import TextField from '@mui/material/TextField'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
 import type {
@@ -41,6 +43,26 @@ const emptyRecipeForm: RecipeFormState = {
 
 const maximumIngredientSuggestions = 6
 
+function fieldSuffix(label: string, className = '') {
+  return (
+    <InputAdornment className={`field-suffix ${className}`.trim()} disableTypography position="end">
+      {label}
+    </InputAdornment>
+  )
+}
+
+function ingredientSourceFor(item: RecipeIngredientInput) {
+  if (item.ingredient_id !== null) {
+    return { className: 'catalog', label: 'Catalog' }
+  }
+
+  if (item.user_ingredient_id !== null || item.name.trim()) {
+    return { className: 'user', label: 'User' }
+  }
+
+  return null
+}
+
 function recipeToForm(recipe: Recipe): RecipeFormState {
   return {
     title: recipe.title,
@@ -77,7 +99,7 @@ export function RecipeFormPage({
   navigate: Navigate
   recipeId?: number
 }) {
-  const ingredientListId = useId()
+  const recipeFormId = useId()
   const [form, setForm] = useState<RecipeFormState>(emptyRecipeForm)
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -86,6 +108,8 @@ export function RecipeFormPage({
   const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
   const [error, setError] = useState('')
   const editing = recipeId !== undefined
+  const prepTimeInputId = `${recipeFormId}-prep-time`
+  const cookTimeInputId = `${recipeFormId}-cook-time`
 
   // Fetch form option lists on mount
   useEffect(() => {
@@ -224,7 +248,7 @@ export function RecipeFormPage({
     setActiveIngredientSuggestionIndex(-1)
   }
 
-  function handleIngredientKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
+  function handleIngredientKeyDown(index: number, event: KeyboardEvent<HTMLElement>) {
     const suggestions = ingredientSuggestionsFor(form.ingredient_items[index]?.name ?? '')
 
     if (openIngredientIndex !== index) return
@@ -343,25 +367,45 @@ export function RecipeFormPage({
             <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
           </label>
           <div className="form-grid">
-            <label>
-              Prep Time (minutes)
-              <input
+            <div className="form-field">
+              <label htmlFor={prepTimeInputId}>Prep Time</label>
+              <TextField
+                className="mui-suffixed-field"
+                fullWidth
+                hiddenLabel
+                id={prepTimeInputId}
+                size="small"
                 type="number"
-                min="0"
                 value={form.prep_time}
                 onChange={(event) => setForm({ ...form, prep_time: event.target.value })}
+                slotProps={{
+                  htmlInput: { min: 0 },
+                  input: {
+                    endAdornment: fieldSuffix('minutes'),
+                  },
+                }}
               />
-            </label>
-            <label>
-              Cook Time (minutes)
-              <input
+            </div>
+            <div className="form-field">
+              <label htmlFor={cookTimeInputId}>Cook Time</label>
+              <TextField
+                className="mui-suffixed-field"
+                fullWidth
+                hiddenLabel
+                id={cookTimeInputId}
+                required
+                size="small"
                 type="number"
-                min="1"
                 value={form.cook_time}
                 onChange={(event) => setForm({ ...form, cook_time: event.target.value })}
-                required
+                slotProps={{
+                  htmlInput: { min: 1 },
+                  input: {
+                    endAdornment: fieldSuffix('minutes'),
+                  },
+                }}
               />
-            </label>
+            </div>
             <label>
               Servings
               <input
@@ -401,7 +445,8 @@ export function RecipeFormPage({
                 const suggestions = ingredientSuggestionsFor(item.name)
                 const showIngredientSuggestions =
                   openIngredientIndex === index && item.name.trim().length > 0 && item.ingredient_id === null
-                const ingredientSuggestionListId = `${ingredientListId}-ingredient-${index}`
+                const ingredientSource = ingredientSourceFor(item)
+                const ingredientSuggestionListId = `${recipeFormId}-ingredient-${index}`
 
                 return (
                   <div className="ingredient-row" key={`ingredient-${index}`}>
@@ -426,18 +471,13 @@ export function RecipeFormPage({
                       ))}
                     </select>
                     <div className="ingredient-combobox">
-                      <input
-                        aria-activedescendant={
-                          activeIngredientSuggestionIndex >= 0
-                            ? `${ingredientSuggestionListId}-${activeIngredientSuggestionIndex}`
-                            : undefined
-                        }
-                        aria-autocomplete="list"
-                        aria-controls={ingredientSuggestionListId}
-                        aria-expanded={showIngredientSuggestions}
-                        aria-label="Ingredient name"
+                      <TextField
+                        className="mui-suffixed-field ingredient-name-field"
+                        fullWidth
+                        hiddenLabel
+                        id={`${recipeFormId}-ingredient-name-${index}`}
                         placeholder="Ingredient"
-                        role="combobox"
+                        size="small"
                         value={item.name}
                         onBlur={() => setOpenIngredientIndex(null)}
                         onChange={(event) => updateIngredientName(index, event.target.value)}
@@ -446,11 +486,28 @@ export function RecipeFormPage({
                           setActiveIngredientSuggestionIndex(-1)
                         }}
                         onKeyDown={(event) => handleIngredientKeyDown(index, event)}
+                        slotProps={{
+                          htmlInput: {
+                            'aria-activedescendant':
+                              activeIngredientSuggestionIndex >= 0
+                                ? `${ingredientSuggestionListId}-${activeIngredientSuggestionIndex}`
+                                : undefined,
+                            'aria-autocomplete': 'list',
+                            'aria-controls': ingredientSuggestionListId,
+                            'aria-expanded': showIngredientSuggestions,
+                            'aria-label': 'Ingredient name',
+                            role: 'combobox',
+                          },
+                          input: {
+                            endAdornment: ingredientSource
+                              ? fieldSuffix(
+                                  ingredientSource.label,
+                                  `ingredient-source-suffix ${ingredientSource.className}`,
+                                )
+                              : null,
+                          },
+                        }}
                       />
-                      {item.ingredient_id !== null && <span className="ingredient-status success-text">Catalog</span>}
-                      {item.user_ingredient_id !== null && (
-                        <span className="ingredient-status danger-text">Under review</span>
-                      )}
                       {showIngredientSuggestions && (
                         <div className="ingredient-suggestions" id={ingredientSuggestionListId} role="listbox">
                           {suggestions.length ? (

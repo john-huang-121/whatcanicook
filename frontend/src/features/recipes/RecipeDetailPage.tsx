@@ -169,7 +169,9 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
                   <li key={item.id}>
                     {`${item.quantity} ${[item.unit_label, item.name].filter(Boolean).join(' ')}`}
                     {item.note && <span className="muted"> ({item.note})</span>}
-                    {item.review_status === 'under_review' && <span className="muted"> - Under review</span>}
+                    {item.review_status === 'under_review' && (
+                      <span className="ingredient-review-status"> - Under review</span>
+                    )}
                   </li>
                 ))}
               </ul>
