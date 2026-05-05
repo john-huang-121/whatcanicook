@@ -229,7 +229,8 @@ p {
 .form-shell h1,
 .auth-panel h1,
 .message-panel h1,
-.profile-summary h1 {
+.profile-summary h1,
+.profile-card h1 {
   color: #111827;
   line-height: 1.05;
 }
@@ -492,7 +493,8 @@ p {
 .form-shell h1,
 .auth-panel h1,
 .message-panel h1,
-.profile-summary h1 {
+.profile-summary h1,
+.profile-card h1 {
   margin-bottom: 0.75rem;
   font-size: clamp(2rem, 5vw, 3rem);
 }
@@ -608,6 +610,7 @@ p {
 .form-shell,
 .auth-panel,
 .message-panel,
+.profile-card,
 .profile-summary,
 .recipe-list-section {
   border-radius: 0.5rem;
@@ -632,6 +635,7 @@ p {
 .form-shell,
 .auth-panel,
 .message-panel,
+.profile-card,
 .profile-summary,
 .recipe-list-section {
   padding: clamp(1.25rem, 4vw, 2rem);
@@ -1035,6 +1039,22 @@ textarea:not(.MuiInputBase-input) {
   margin-bottom: 1rem;
 }
 
+.profile-card {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.profile-card-header h1,
+.profile-card-header p {
+  margin-bottom: 0.35rem;
+}
+
 .profile-summary img {
   width: 7rem;
   height: 7rem;
@@ -1045,6 +1065,71 @@ textarea:not(.MuiInputBase-input) {
 .profile-avatar {
   width: 7rem !important;
   height: 7rem !important;
+  border: 1px solid rgba(217, 95, 50, 0.18);
+  background: #fff0d6 !important;
+  color: #8a431f !important;
+  font-size: 1.65rem !important;
+  font-weight: 850;
+  box-shadow: 0 14px 30px rgba(185, 91, 39, 0.14);
+}
+
+.profile-section-divider {
+  color: var(--style-primary-dark);
+  font-weight: 850;
+  margin: 0.85rem 0 0.85rem !important;
+}
+
+.profile-section-divider::before,
+.profile-section-divider::after {
+  border-color: rgba(217, 95, 50, 0.22);
+}
+
+.profile-date-picker {
+  width: 100%;
+}
+
+.profile-date-picker .MuiPickersOutlinedInput-root,
+.profile-date-picker .MuiPickersInputBase-root {
+  min-height: 2.65rem;
+  border-radius: 0.35rem;
+  background: #fffdf8;
+  color: var(--style-ink);
+  font: inherit;
+}
+
+.profile-date-picker .MuiPickersOutlinedInput-notchedOutline {
+  border-color: var(--style-line);
+  border-radius: 0.35rem;
+}
+
+.profile-date-picker .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline,
+.profile-date-picker .MuiPickersInputBase-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline {
+  border-color: var(--style-primary);
+  border-width: 1px;
+}
+
+.profile-date-picker .MuiPickersOutlinedInput-root.Mui-focused,
+.profile-date-picker .MuiPickersInputBase-root.Mui-focused {
+  box-shadow: 0 0 0 3px rgba(217, 95, 50, 0.16);
+}
+
+.profile-date-picker .MuiPickersSectionList-root {
+  padding: 0.65rem 0.75rem;
+}
+
+.profile-date-picker .MuiInputAdornment-root {
+  color: var(--style-muted);
+}
+
+.profile-date-picker .MuiIconButton-root {
+  border-radius: 0.35rem;
+  color: var(--style-primary-dark);
+  padding: 0.35rem;
+}
+
+.profile-date-picker .MuiIconButton-root:hover,
+.profile-date-picker .MuiIconButton-root:focus-visible {
+  background: #fff0d6;
 }
 
 .file-upload-row {
@@ -1256,6 +1341,7 @@ textarea:not(.MuiInputBase-input) {
   .dashboard-hero,
   .detail-header,
   .profile-summary,
+  .profile-card-header,
   .form-section-header {
     align-items: flex-start;
     flex-direction: column;
@@ -1375,6 +1461,7 @@ textarea:not(.MuiInputBase-input) {
 .auth-panel h1,
 .message-panel h1,
 .profile-summary h1,
+.profile-card h1,
 .hero-content h1 {
   color: var(--style-ink);
 }
@@ -1397,6 +1484,7 @@ textarea:not(.MuiInputBase-input) {
 .form-shell,
 .auth-panel,
 .message-panel,
+.profile-card,
 .profile-summary,
 .recipe-list-section,
 .dashboard-hero,
