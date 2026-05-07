@@ -284,6 +284,36 @@ class RecipeApiTests(TestCase):
 
         self.assertEqual(recipe_titles, ["Private Pasta"])
 
+    def test_ingredient_ids_filter_matches_recipes_with_all_selected_ingredients(self):
+        tomato = Ingredient.objects.create(name="Tomato")
+        RecipeIngredient.objects.create(
+            recipe=self.public_recipe,
+            ingredient=tomato,
+            quantity=2,
+            unit=Unit.WHOLE,
+        )
+        RecipeIngredient.objects.create(
+            recipe=self.middle_eastern_recipe,
+            ingredient=tomato,
+            quantity=1,
+            unit=Unit.WHOLE,
+        )
+
+        response = self.client.get(
+            reverse("recipes:recipe-list"),
+            {"ingredient_ids": f"{self.ingredient.id},{tomato.id}"},
+        )
+        recipe_titles = [recipe["title"] for recipe in response.json()]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(recipe_titles, ["Public Pasta"])
+
+    def test_invalid_ingredient_ids_filter_returns_no_recipes(self):
+        response = self.client.get(reverse("recipes:recipe-list"), {"ingredient_ids": "salt"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
     def test_non_owner_cannot_edit_recipe(self):
         self.client.login(username="other", password="testpass123")
 

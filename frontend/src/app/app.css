@@ -446,6 +446,7 @@ p {
 .recipe-search-combobox {
   position: relative;
   flex: 1;
+  min-width: 0;
 }
 
 .recipe-search-controls .MuiFormControl-root,
@@ -461,6 +462,13 @@ p {
   margin-top: 0;
 }
 
+.recipe-search-actions {
+  display: grid;
+  flex: 0 0 13.75rem;
+  grid-template-columns: minmax(7.75rem, 1fr) 4.8rem;
+  gap: 0.55rem;
+}
+
 .recipe-search-autocomplete .MuiInputBase-root {
   align-items: center;
 }
@@ -474,10 +482,63 @@ p {
   transform: translate(14px, -50%) scale(1);
 }
 
+.recipe-search-autocomplete .MuiAutocomplete-clearIndicator {
+  display: none;
+}
+
+.ingredient-search-form {
+  width: min(860px, 100%);
+}
+
+.ingredient-search-controls .MuiOutlinedInput-root {
+  height: auto;
+  min-height: 3rem;
+}
+
+.ingredient-search-autocomplete .MuiAutocomplete-tag {
+  border-color: rgba(217, 95, 50, 0.22);
+  background: #fff0d6;
+  color: #8a431f;
+  font-weight: 800;
+}
+
+.ingredient-search-tag.MuiChip-root {
+  border-color: rgba(217, 95, 50, 0.22);
+  background: #fff0d6;
+  color: #8a431f;
+  font-weight: 800;
+}
+
+.ingredient-search-autocomplete .MuiAutocomplete-tag .MuiChip-deleteIcon,
+.ingredient-search-tag .MuiChip-deleteIcon {
+  color: rgba(138, 67, 31, 0.72);
+  font-size: 1rem;
+}
+
+.ingredient-search-autocomplete .MuiAutocomplete-tag .MuiChip-deleteIcon:hover,
+.ingredient-search-autocomplete .MuiAutocomplete-tag .MuiChip-deleteIcon:focus-visible,
+.ingredient-search-tag .MuiChip-deleteIcon:hover,
+.ingredient-search-tag .MuiChip-deleteIcon:focus-visible {
+  color: #8a431f;
+}
+
+.ingredient-search-helper {
+  margin: 0;
+  color: var(--style-muted, #725e4a);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .recipe-search-controls .primary-button,
 .recipe-search-controls .text-button {
-  flex: 0 0 auto;
+  width: 100%;
   padding-block: 0;
+}
+
+.recipe-search-action-placeholder {
+  display: block;
+  min-width: 4.8rem;
 }
 
 .recipe-search-suggestions {
@@ -546,6 +607,58 @@ p {
 .search-results-section {
   display: grid;
   gap: 1rem;
+}
+
+.ingredient-browse-section {
+  display: grid;
+  gap: 1rem;
+  margin: 2.25rem 0;
+}
+
+.ingredient-browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1.1rem 1.4rem;
+}
+
+.ingredient-browse-group {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(217, 95, 50, 0.16);
+  padding-top: 0.9rem;
+}
+
+.ingredient-browse-group h3 {
+  margin: 0;
+  color: var(--style-ink, #33251b);
+  font-size: 1rem;
+}
+
+.ingredient-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ingredient-browse-chip.MuiChip-root {
+  max-width: 100%;
+  border-color: rgba(217, 95, 50, 0.24);
+  background: #fffaf0;
+  color: var(--style-ink, #33251b);
+  font-weight: 800;
+}
+
+.ingredient-browse-chip.MuiChip-root:hover,
+.ingredient-browse-chip.MuiChip-root:focus-visible {
+  border-color: var(--style-primary, #d95f32);
+  background: #fff0d6;
+  color: #8a431f;
+}
+
+.ingredient-browse-chip.MuiChip-root.selected {
+  background: var(--style-primary, #d95f32);
+  color: #fffaf0;
 }
 
 .section-heading.centered {
@@ -1464,6 +1577,16 @@ textarea:not(.MuiInputBase-input) {
 
   .recipe-search-combobox {
     width: 100%;
+  }
+
+  .recipe-search-actions {
+    flex: 0 0 auto;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .recipe-search-action-placeholder {
+    display: none;
   }
 }
 

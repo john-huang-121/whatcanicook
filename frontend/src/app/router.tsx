@@ -37,8 +37,9 @@ export function AppRouter({
   if (pathname === '/recipes/ingredients')
     return (
       <CuisineIndexPage
-        key={`ingredients-${searchParams.get('q') ?? ''}`}
+        key={`ingredients-${searchParams.get('q') ?? ''}-${searchParams.get('ingredient_ids') ?? ''}`}
         browseMode="ingredient"
+        ingredientIdsQuery={searchParams.get('ingredient_ids') ?? ''}
         navigate={navigate}
         searchQuery={searchParams.get('q') ?? ''}
       />

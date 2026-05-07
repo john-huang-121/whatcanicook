@@ -58,6 +58,23 @@ class IngredientListView(APIView):
 class RecipeListView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    def get_ingredient_ids(self, request):
+        raw_values = request.query_params.getlist("ingredient_ids")
+        ingredient_ids = []
+
+        for raw_value in raw_values:
+            for value in raw_value.split(","):
+                value = value.strip()
+                if not value:
+                    continue
+                if not value.isdigit():
+                    return None
+                ingredient_id = int(value)
+                if ingredient_id > 0 and ingredient_id not in ingredient_ids:
+                    ingredient_ids.append(ingredient_id)
+
+        return ingredient_ids
+
     def get_search_filter(self, search_query):
         search_filter = None
         search_terms = [term.strip() for term in search_query.split() if term.strip()]
@@ -99,6 +116,16 @@ class RecipeListView(APIView):
             search_filter = self.get_search_filter(search_query)
             if search_filter is not None:
                 queryset = queryset.filter(search_filter).distinct()
+
+        ingredient_ids = self.get_ingredient_ids(request)
+        if ingredient_ids is None:
+            return Recipe.objects.none()
+
+        for ingredient_id in ingredient_ids:
+            queryset = queryset.filter(recipe_ingredients__ingredient_id=ingredient_id)
+
+        if ingredient_ids:
+            queryset = queryset.distinct()
 
         return queryset
 

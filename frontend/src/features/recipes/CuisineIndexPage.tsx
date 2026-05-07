@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, KeyboardEvent, SyntheticEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
+import type { AutocompleteChangeDetails, AutocompleteChangeReason } from '@mui/material/Autocomplete'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import { MessagePage } from '../../components/MessagePage'
 import { RecipeGrid } from './components/RecipeGrid'
 import { apiFetch } from '../../lib/api'
-import type { Cuisine, Navigate, Recipe } from '../../types'
+import type { Cuisine, Ingredient, Navigate, Recipe } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 
 type SearchState = {
@@ -18,20 +20,67 @@ type SearchState = {
 
 type SuggestionState = SearchState
 
+type IngredientBrowseGroup = {
+  categories: string[]
+  label: string
+  limit: number
+}
+
 const minimumAutocompleteLength = 2
 const maximumSuggestions = 6
 
+const ingredientBrowseGroups: IngredientBrowseGroup[] = [
+  { label: 'Protein', categories: ['meat', 'seafood', 'protein', 'legume'], limit: 12 },
+  { label: 'Vegetables', categories: ['vegetable'], limit: 12 },
+  { label: 'Grains', categories: ['grain'], limit: 10 },
+  { label: 'Dairy', categories: ['dairy'], limit: 10 },
+  { label: 'Pantry', categories: ['pantry', 'seasoning', 'oil', 'baking', 'herb'], limit: 14 },
+]
+
+function parseIngredientIdQuery(value: string) {
+  return value
+    .split(',')
+    .map((id) => Number(id.trim()))
+    .filter((id, index, ids) => Number.isInteger(id) && id > 0 && ids.indexOf(id) === index)
+}
+
+function ingredientName(ingredient: Ingredient) {
+  return ingredient.name?.trim() || ''
+}
+
+function ingredientCategory(ingredient: Ingredient) {
+  return ingredient.category?.trim() || 'Other'
+}
+
+function ingredientCategoryKey(ingredient: Ingredient) {
+  return ingredientCategory(ingredient).toLowerCase()
+}
+
 export function CuisineIndexPage({
   browseMode = 'cuisine',
+  ingredientIdsQuery = '',
   navigate,
   searchQuery = '',
 }: {
   browseMode?: 'cuisine' | 'ingredient'
+  ingredientIdsQuery?: string
   navigate: Navigate
   searchQuery?: string
 }) {
+  const normalizedSearchQuery = searchQuery.trim()
+  const appliedIngredientIds = parseIngredientIdQuery(ingredientIdsQuery)
+  const normalizedIngredientIdsQuery = appliedIngredientIds.join(',')
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
-  const [searchInput, setSearchInput] = useState(searchQuery)
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [selectedIngredientState, setSelectedIngredientState] = useState(() => ({
+    ids: appliedIngredientIds,
+    query: normalizedIngredientIdsQuery,
+  }))
+  const [ingredientInput, setIngredientInput] = useState('')
+  const [recipeSearchState, setRecipeSearchState] = useState(() => ({
+    query: normalizedSearchQuery,
+    value: searchQuery,
+  }))
   const [searchState, setSearchState] = useState<SearchState>({
     query: '',
     recipes: [],
@@ -44,12 +93,47 @@ export function CuisineIndexPage({
   })
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [loading, setLoading] = useState(browseMode !== 'ingredient')
+  const [ingredientLoading, setIngredientLoading] = useState(browseMode === 'ingredient')
   const [error, setError] = useState('')
-  const normalizedSearchQuery = searchQuery.trim()
-  const hasSearch = normalizedSearchQuery.length > 0
+  const [ingredientError, setIngredientError] = useState('')
+  const selectedIngredientIds =
+    selectedIngredientState.query === normalizedIngredientIdsQuery ? selectedIngredientState.ids : appliedIngredientIds
+  const searchInput = recipeSearchState.query === normalizedSearchQuery ? recipeSearchState.value : searchQuery
+  const hasTextSearch = normalizedSearchQuery.length > 0
+  const hasIngredientSearch = browseMode === 'ingredient' && appliedIngredientIds.length > 0
+  const hasSearch = hasTextSearch || hasIngredientSearch
   const normalizedSuggestionQuery = searchInput.trim()
-  const shouldFetchSuggestions = normalizedSuggestionQuery.length >= minimumAutocompleteLength
+  const shouldFetchSuggestions =
+    browseMode === 'cuisine' && normalizedSuggestionQuery.length >= minimumAutocompleteLength
   const browseBasePath = browseMode === 'ingredient' ? '/recipes/ingredients' : '/recipes'
+  const searchKey = hasIngredientSearch
+    ? `ingredients:${normalizedIngredientIdsQuery}`
+    : hasTextSearch
+      ? `q:${normalizedSearchQuery}`
+      : ''
+  const searchEndpoint = hasIngredientSearch
+    ? `/api/recipes/?ingredient_ids=${encodeURIComponent(normalizedIngredientIdsQuery)}`
+    : hasTextSearch
+      ? `/api/recipes/?q=${encodeURIComponent(normalizedSearchQuery)}`
+      : ''
+  const appliedIngredients = appliedIngredientIds
+    .map((id) => ingredients.find((ingredient) => ingredient.id === id))
+    .filter((ingredient): ingredient is Ingredient => Boolean(ingredient))
+  const selectedIngredients = selectedIngredientIds
+    .map((id) => ingredients.find((ingredient) => ingredient.id === id))
+    .filter((ingredient): ingredient is Ingredient => Boolean(ingredient))
+    .filter((ingredient) => ingredientName(ingredient))
+  const ingredientResultLabel = appliedIngredients.length
+    ? appliedIngredients.map((ingredient) => ingredientName(ingredient)).join(', ')
+    : 'selected ingredients'
+  const ingredientGroups = ingredientBrowseGroups
+    .map((group) => ({
+      ...group,
+      ingredients: ingredients
+        .filter((ingredient) => group.categories.includes(ingredientCategoryKey(ingredient)))
+        .slice(0, group.limit),
+    }))
+    .filter((group) => group.ingredients.length > 0)
 
   useEffect(() => {
     if (browseMode === 'ingredient') {
@@ -78,22 +162,49 @@ export function CuisineIndexPage({
   }, [browseMode])
 
   useEffect(() => {
-    if (!normalizedSearchQuery) return
+    if (browseMode !== 'ingredient') {
+      return
+    }
+
+    let active = true
+
+    apiFetch<Ingredient[]>('/api/ingredients/')
+      .then((response) => {
+        if (!active) return
+        setIngredients(response)
+        setIngredientError('')
+      })
+      .catch((requestError) => {
+        if (!active) return
+        setIngredientError(formatErrors(requestError))
+      })
+      .finally(() => {
+        if (!active) return
+        setIngredientLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [browseMode])
+
+  useEffect(() => {
+    if (!searchEndpoint) return
     let active = true
 
     async function loadSearchResults() {
       try {
-        const response = await apiFetch<Recipe[]>(`/api/recipes/?q=${encodeURIComponent(normalizedSearchQuery)}`)
+        const response = await apiFetch<Recipe[]>(searchEndpoint)
         if (!active) return
         setSearchState({
-          query: normalizedSearchQuery,
+          query: searchKey,
           recipes: response,
           error: '',
         })
       } catch (requestError) {
         if (!active) return
         setSearchState({
-          query: normalizedSearchQuery,
+          query: searchKey,
           recipes: [],
           error: formatErrors(requestError),
         })
@@ -105,7 +216,7 @@ export function CuisineIndexPage({
     return () => {
       active = false
     }
-  }, [normalizedSearchQuery])
+  }, [searchEndpoint, searchKey])
 
   useEffect(() => {
     if (!shouldFetchSuggestions) return
@@ -140,16 +251,90 @@ export function CuisineIndexPage({
     }
   }, [normalizedSuggestionQuery, shouldFetchSuggestions])
 
-  function submitSearch(event: FormEvent) {
+  function submitRecipeSearch(event: FormEvent) {
     event.preventDefault()
     setSuggestionsOpen(false)
     const nextQuery = searchInput.trim()
+    setRecipeSearchState({ query: nextQuery, value: nextQuery })
     navigate(nextQuery ? `${browseBasePath}?q=${encodeURIComponent(nextQuery)}` : browseBasePath)
   }
 
-  const searchLoading = hasSearch && searchState.query !== normalizedSearchQuery
-  const searchError = hasSearch && searchState.query === normalizedSearchQuery ? searchState.error : ''
-  const searchResults = searchState.query === normalizedSearchQuery ? searchState.recipes : []
+  function submitIngredientSearch(event: FormEvent) {
+    event.preventDefault()
+    const nextIngredientQuery = selectedIngredientIds.join(',')
+    setSelectedIngredientState({ ids: selectedIngredientIds, query: nextIngredientQuery })
+    navigate(nextIngredientQuery ? `${browseBasePath}?ingredient_ids=${nextIngredientQuery}` : browseBasePath)
+  }
+
+  function clearIngredientSearch() {
+    setSelectedIngredientState({ ids: [], query: '' })
+    setIngredientInput('')
+    navigate(browseBasePath)
+  }
+
+  function clearRecipeSearch() {
+    setRecipeSearchState({ query: '', value: '' })
+    setSuggestionsOpen(false)
+    navigate(browseBasePath)
+  }
+
+  function selectIngredients(value: readonly Ingredient[]) {
+    const nextIngredientIds = value
+      .map((ingredient) => ingredient.id)
+      .filter((id, index, ids) => ids.indexOf(id) === index)
+    setSelectedIngredientState({ ids: nextIngredientIds, query: normalizedIngredientIdsQuery })
+    setIngredientInput('')
+  }
+
+  function addIngredient(ingredient: Ingredient) {
+    const nextIngredientIds = selectedIngredientIds.includes(ingredient.id)
+      ? selectedIngredientIds
+      : [...selectedIngredientIds, ingredient.id]
+    setSelectedIngredientState({ ids: nextIngredientIds, query: normalizedIngredientIdsQuery })
+    setIngredientInput('')
+  }
+
+  function removeIngredient(ingredientId: number) {
+    setSelectedIngredientState({
+      ids: selectedIngredientIds.filter((selectedIngredientId) => selectedIngredientId !== ingredientId),
+      query: normalizedIngredientIdsQuery,
+    })
+    setIngredientInput('')
+  }
+
+  function handleIngredientSelectionChange(
+    _: SyntheticEvent,
+    value: readonly Ingredient[],
+    reason: AutocompleteChangeReason,
+    details?: AutocompleteChangeDetails<Ingredient>
+  ) {
+    if (reason === 'selectOption' && details?.option) {
+      addIngredient(details.option)
+      return
+    }
+
+    selectIngredients(value)
+  }
+
+  function toggleIngredient(ingredient: Ingredient) {
+    const nextIngredientIds = selectedIngredientIds.includes(ingredient.id)
+      ? selectedIngredientIds.filter((ingredientId) => ingredientId !== ingredient.id)
+      : [...selectedIngredientIds, ingredient.id]
+    setSelectedIngredientState({ ids: nextIngredientIds, query: normalizedIngredientIdsQuery })
+  }
+
+  function handleIngredientSearchKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'Backspace' || ingredientInput.length > 0 || selectedIngredientIds.length === 0) {
+      return
+    }
+
+    event.preventDefault()
+    removeIngredient(selectedIngredientIds[selectedIngredientIds.length - 1])
+  }
+
+  const searchLoading = hasSearch && searchState.query !== searchKey
+  const searchError = hasSearch && searchState.query === searchKey ? searchState.error : ''
+  const searchResults = searchState.query === searchKey ? searchState.recipes : []
   const suggestionsLoading =
     suggestionsOpen && shouldFetchSuggestions && suggestionState.query !== normalizedSuggestionQuery
   const suggestionError =
@@ -158,8 +343,16 @@ export function CuisineIndexPage({
     suggestionsOpen && suggestionState.query === normalizedSuggestionQuery ? suggestionState.recipes : []
   const showSuggestions = suggestionsOpen && shouldFetchSuggestions
   const noSuggestionText = suggestionError || 'No quick matches. Press Search to see all results.'
+  const searchResultsTitle = hasIngredientSearch
+    ? `Recipes with ${ingredientResultLabel}`
+    : `Recipes matching "${normalizedSearchQuery}"`
+  const emptySearchMessage = hasIngredientSearch
+    ? 'No recipes include all selected ingredients yet. Try removing one ingredient or browsing another category.'
+    : `No recipes matched "${normalizedSearchQuery}". Try a recipe name, ingredient, cuisine, or cook.`
 
-  if (error && !hasSearch) return <MessagePage title="Cuisines unavailable" message={error} navigate={navigate} />
+  if (error && browseMode === 'cuisine' && !hasSearch) {
+    return <MessagePage title="Cuisines unavailable" message={error} navigate={navigate} />
+  }
 
   return (
     <section className="page-band">
@@ -169,76 +362,216 @@ export function CuisineIndexPage({
           <h1>{browseMode === 'ingredient' ? 'Recipes by Ingredient' : 'Cuisines'}</h1>
           <p>
             {browseMode === 'ingredient'
-              ? 'Search by ingredient to find recipes that use what you already have.'
+              ? 'Pick ingredients you have, then find recipes that use all of them.'
               : 'Cuisines reflect ingredients, techniques, and traditions from a culture, region, or country.'}
           </p>
-          <form className="recipe-search-form" onSubmit={submitSearch}>
-            <div className="recipe-search-controls">
-              <div className="recipe-search-combobox">
-                <Autocomplete<Recipe, false, false, true>
-                  className="recipe-search-autocomplete"
-                  freeSolo
-                  filterOptions={(options) => options}
-                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.title)}
-                  inputValue={searchInput}
-                  isOptionEqualToValue={(option, value) => typeof value !== 'string' && option.id === value.id}
-                  loading={suggestionsLoading}
-                  loadingText="Finding matching recipes..."
-                  noOptionsText={noSuggestionText}
-                  onChange={(_, value) => {
-                    if (typeof value === 'object' && value !== null) {
-                      setSuggestionsOpen(false)
-                      navigate(`/recipes/${value.id}`)
-                    }
-                  }}
-                  onClose={() => setSuggestionsOpen(false)}
-                  onInputChange={(_, value, reason) => {
-                    if (reason === 'reset') return
-                    setSearchInput(value)
-                    setSuggestionsOpen(true)
-                  }}
-                  onOpen={() => setSuggestionsOpen(true)}
-                  open={showSuggestions}
-                  options={suggestions}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      id="recipe-search"
-                      label="Search recipes"
-                      placeholder="Search by recipe, ingredient, cuisine, or cook"
+          <form
+            className={`recipe-search-form ${browseMode === 'ingredient' ? 'ingredient-search-form' : ''}`}
+            onSubmit={browseMode === 'ingredient' ? submitIngredientSearch : submitRecipeSearch}
+          >
+            {browseMode === 'ingredient' ? (
+              <>
+                <div className="recipe-search-controls ingredient-search-controls">
+                  <div className="recipe-search-combobox">
+                    <Autocomplete<Ingredient, true, false, false>
+                      className="recipe-search-autocomplete ingredient-search-autocomplete"
+                      filterSelectedOptions
+                      getOptionLabel={ingredientName}
+                      groupBy={ingredientCategory}
+                      inputValue={ingredientInput}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      loading={ingredientLoading}
+                      loadingText="Loading ingredients..."
+                      noOptionsText="No matching catalog ingredients"
+                      onChange={handleIngredientSelectionChange}
+                      onKeyDown={handleIngredientSearchKeyDown}
+                      onInputChange={(_, value, reason) => {
+                        if (reason === 'reset' || reason === 'selectOption' || reason === 'removeOption') {
+                          setIngredientInput('')
+                          return
+                        }
+                        setIngredientInput(value)
+                      }}
+                      options={ingredients}
+                      renderValue={(value, getItemProps) =>
+                        value.map((ingredient, index) => {
+                          const itemProps = getItemProps({ index })
+                          return (
+                            <Chip
+                              className={`ingredient-search-tag ${itemProps.className}`}
+                              data-item-index={itemProps['data-item-index']}
+                              disabled={itemProps.disabled}
+                              key={itemProps.key}
+                              label={ingredientName(ingredient)}
+                              onDelete={() => removeIngredient(ingredient.id)}
+                              size="small"
+                              tabIndex={itemProps.tabIndex}
+                            />
+                          )
+                        })
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          id="ingredient-search"
+                          slotProps={{
+                            ...params.slotProps,
+                            htmlInput: {
+                              ...params.slotProps.htmlInput,
+                              'aria-label': 'Ingredients',
+                            },
+                          }}
+                        />
+                      )}
+                      renderOption={(props, ingredient) => {
+                        const { key, className, ...optionProps } = props
+                        return (
+                          <li
+                            {...optionProps}
+                            className={`${className ?? ''} recipe-search-option ingredient-search-option`}
+                            key={key}
+                          >
+                            <span>{ingredientName(ingredient)}</span>
+                            <small>{ingredientCategory(ingredient)}</small>
+                          </li>
+                        )
+                      }}
+                      slotProps={{
+                        paper: { className: 'recipe-search-suggestions' },
+                        listbox: { className: 'recipe-search-listbox' },
+                      }}
+                      value={selectedIngredients}
                     />
+                  </div>
+                  <div className="recipe-search-actions">
+                    <Button type="submit" className="primary-button" variant="contained" disabled={!selectedIngredientIds.length}>
+                      Find Recipes
+                    </Button>
+                    {hasIngredientSearch || selectedIngredientIds.length > 0 ? (
+                      <Button type="button" className="text-button" variant="text" onClick={clearIngredientSearch}>
+                        Clear
+                      </Button>
+                    ) : (
+                      <span className="recipe-search-action-placeholder" aria-hidden="true" />
+                    )}
+                  </div>
+                </div>
+                <p className="ingredient-search-helper">Recipes must include every selected ingredient.</p>
+              </>
+            ) : (
+              <div className="recipe-search-controls">
+                <div className="recipe-search-combobox">
+                  <Autocomplete<Recipe, false, true, true>
+                    className="recipe-search-autocomplete"
+                    disableClearable
+                    freeSolo
+                    filterOptions={(options) => options}
+                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.title)}
+                    inputValue={searchInput}
+                    isOptionEqualToValue={(option, value) => typeof value !== 'string' && option.id === value.id}
+                    loading={suggestionsLoading}
+                    loadingText="Finding matching recipes..."
+                    noOptionsText={noSuggestionText}
+                    onChange={(_, value) => {
+                      if (typeof value === 'object' && value !== null) {
+                        const nextQuery = value.title.trim()
+                        setRecipeSearchState({ query: nextQuery, value: value.title })
+                        setSuggestionsOpen(false)
+                        navigate(`${browseBasePath}?q=${encodeURIComponent(nextQuery)}`)
+                      }
+                    }}
+                    onClose={() => setSuggestionsOpen(false)}
+                    onInputChange={(_, value, reason) => {
+                      if (reason === 'reset') return
+                      setRecipeSearchState({ query: normalizedSearchQuery, value })
+                      setSuggestionsOpen(true)
+                    }}
+                    onOpen={() => setSuggestionsOpen(true)}
+                    open={showSuggestions}
+                    options={suggestions}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        id="recipe-search"
+                        label="Search recipes"
+                        placeholder="Search by recipe, ingredient, cuisine, or cook"
+                      />
+                    )}
+                    renderOption={(props, recipe) => (
+                      <li {...props} className={`${props.className ?? ''} recipe-search-option`}>
+                        <span>{recipe.title}</span>
+                        <small>
+                          {recipe.cuisine_label} / {recipe.total_time} min / by {recipe.created_by_username}
+                        </small>
+                      </li>
+                    )}
+                    slotProps={{
+                      paper: { className: 'recipe-search-suggestions' },
+                      listbox: { className: 'recipe-search-listbox' },
+                    }}
+                  />
+                </div>
+                <div className="recipe-search-actions">
+                  <Button type="submit" className="primary-button" variant="contained">
+                    Search
+                  </Button>
+                  {hasTextSearch ? (
+                    <Button type="button" className="text-button" variant="text" onClick={clearRecipeSearch}>
+                      Clear
+                    </Button>
+                  ) : (
+                    <span className="recipe-search-action-placeholder" aria-hidden="true" />
                   )}
-                  renderOption={(props, recipe) => (
-                    <li {...props} className={`${props.className ?? ''} recipe-search-option`}>
-                      <span>{recipe.title}</span>
-                      <small>
-                        {recipe.cuisine_label} / {recipe.total_time} min / by {recipe.created_by_username}
-                      </small>
-                    </li>
-                  )}
-                  slotProps={{
-                    paper: { className: 'recipe-search-suggestions' },
-                    listbox: { className: 'recipe-search-listbox' },
-                  }}
-                />
+                </div>
               </div>
-              <Button type="submit" className="primary-button" variant="contained">
-                Search
-              </Button>
-              {hasSearch && (
-                <Button type="button" className="text-button" variant="text" onClick={() => navigate(browseBasePath)}>
-                  Clear
-                </Button>
-              )}
-            </div>
+            )}
           </form>
         </div>
+        {browseMode === 'ingredient' && (
+          <section className="ingredient-browse-section" aria-label="Browse common ingredients">
+            <div className="form-section-header">
+              <div>
+                <p className="eyebrow">Ingredient Shelves</p>
+                <h2>Start with what you have</h2>
+              </div>
+            </div>
+            {ingredientError ? (
+              <Alert severity="error">{ingredientError}</Alert>
+            ) : ingredientLoading ? (
+              <p className="muted">Loading ingredients...</p>
+            ) : (
+              <div className="ingredient-browse-grid">
+                {ingredientGroups.map((group) => (
+                  <section className="ingredient-browse-group" key={group.label}>
+                    <h3>{group.label}</h3>
+                    <div className="ingredient-chip-row">
+                      {group.ingredients.map((ingredient) => {
+                        const selected = selectedIngredientIds.includes(ingredient.id)
+                        return (
+                          <Chip
+                            className={`ingredient-browse-chip ${selected ? 'selected' : ''}`}
+                            clickable
+                            color={selected ? 'primary' : 'default'}
+                            key={ingredient.id}
+                            label={ingredientName(ingredient)}
+                            onClick={() => toggleIngredient(ingredient)}
+                            variant={selected ? 'filled' : 'outlined'}
+                          />
+                        )
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
         {hasSearch ? (
           <section className="search-results-section" aria-live="polite">
             <div className="form-section-header">
               <div>
-                <p className="eyebrow">Search Results</p>
-                <h2>Recipes matching "{normalizedSearchQuery}"</h2>
+                <p className="eyebrow">{hasIngredientSearch ? 'Ingredient Match' : 'Search Results'}</p>
+                <h2>{searchResultsTitle}</h2>
               </div>
             </div>
             {searchError ? (
@@ -248,11 +581,11 @@ export function CuisineIndexPage({
             ) : searchResults.length ? (
               <RecipeGrid recipes={searchResults} navigate={navigate} />
             ) : (
-              <p className="empty-state">No recipes matched "{normalizedSearchQuery}". Try a recipe name, ingredient, cuisine, or cook.</p>
+              <p className="empty-state">{emptySearchMessage}</p>
             )}
           </section>
         ) : browseMode === 'ingredient' ? (
-          <p className="empty-state">Search for an ingredient above to discover matching recipes.</p>
+          <p className="empty-state">Choose one or more ingredients above to discover matching recipes.</p>
         ) : loading ? (
           <p className="muted">Loading cuisines...</p>
         ) : (
