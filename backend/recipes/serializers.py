@@ -3,16 +3,54 @@ from rest_framework import serializers
 
 from social.models import RecipeLike, SavedRecipe, UserFollow
 
-from .models import Cuisine, Ingredient, Instruction, Recipe, RecipeIngredient, RecipeInstruction, Unit
+from .models import (
+    Cuisine,
+    Ingredient,
+    IngredientAlias,
+    Instruction,
+    Recipe,
+    RecipeIngredient,
+    RecipeInstruction,
+    Unit,
+    UserIngredient,
+    UserIngredientStatus,
+    normalize_ingredient_name,
+)
 
 
 class RecipeIngredientReadSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source="ingredient.name")
+    name = serializers.SerializerMethodField()
+    ingredient_id = serializers.IntegerField(read_only=True)
+    user_ingredient_id = serializers.IntegerField(read_only=True)
+    review_status = serializers.SerializerMethodField()
+    is_custom = serializers.SerializerMethodField()
     unit_label = serializers.SerializerMethodField()
 
     class Meta:
         model = RecipeIngredient
-        fields = ["id", "name", "quantity", "unit", "unit_label", "note"]
+        fields = [
+            "id",
+            "ingredient_id",
+            "user_ingredient_id",
+            "name",
+            "quantity",
+            "unit",
+            "unit_label",
+            "note",
+            "review_status",
+            "is_custom",
+        ]
+
+    def get_name(self, obj):
+        return obj.display_name
+
+    def get_review_status(self, obj):
+        if not obj.user_ingredient_id:
+            return ""
+        return obj.user_ingredient.status
+
+    def get_is_custom(self, obj):
+        return bool(obj.user_ingredient_id)
 
     def get_unit_label(self, obj):
         if not obj.unit:
@@ -21,10 +59,25 @@ class RecipeIngredientReadSerializer(serializers.ModelSerializer):
 
 
 class RecipeIngredientWriteSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=255)
+    ingredient_id = serializers.IntegerField(required=False, allow_null=True)
+    user_ingredient_id = serializers.IntegerField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=255, required=False, allow_blank=True)
     quantity = serializers.FloatField()
     unit = serializers.ChoiceField(choices=Unit.choices, required=False, allow_blank=True)
     note = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        has_ingredient_id = attrs.get("ingredient_id") is not None
+        has_user_ingredient_id = attrs.get("user_ingredient_id") is not None
+
+        if has_ingredient_id and has_user_ingredient_id:
+            raise serializers.ValidationError("Choose either a catalog ingredient or a custom ingredient.")
+
+        name = attrs.get("name", "").strip()
+        if not has_ingredient_id and not has_user_ingredient_id and not name:
+            raise serializers.ValidationError("Choose a catalog ingredient or enter a custom ingredient.")
+
+        return attrs
 
 
 class RecipeInstructionReadSerializer(serializers.ModelSerializer):
@@ -187,18 +240,51 @@ class RecipeSerializer(serializers.ModelSerializer):
     def _replace_ingredients(self, recipe, ingredient_items):
         recipe.recipe_ingredients.all().delete()
         for item in ingredient_items:
-            name = item["name"].strip()
-            if not name:
+            if (
+                item.get("ingredient_id") is None
+                and item.get("user_ingredient_id") is None
+                and not item.get("name", "").strip()
+            ):
                 continue
 
-            ingredient, _ = Ingredient.objects.get_or_create(name=name)
+            ingredient, user_ingredient = self._resolve_ingredient(item)
             RecipeIngredient.objects.create(
                 recipe=recipe,
                 ingredient=ingredient,
+                user_ingredient=user_ingredient,
                 quantity=item["quantity"],
                 unit=item.get("unit", "").strip(),
                 note=item.get("note", "").strip(),
             )
+
+    def _resolve_ingredient(self, item):
+        request = self.context.get("request")
+
+        if item.get("ingredient_id") is not None:
+            try:
+                return Ingredient.objects.get(id=item["ingredient_id"]), None
+            except Ingredient.DoesNotExist as exc:
+                raise serializers.ValidationError({"ingredient_items": "Choose a valid catalog ingredient."}) from exc
+
+        if item.get("user_ingredient_id") is not None:
+            try:
+                user_ingredient = UserIngredient.objects.get(
+                    id=item["user_ingredient_id"],
+                    user=request.user,
+                )
+            except UserIngredient.DoesNotExist as exc:
+                raise serializers.ValidationError({"ingredient_items": "Choose a valid custom ingredient."}) from exc
+            if user_ingredient.status == UserIngredientStatus.APPROVED and user_ingredient.approved_ingredient_id:
+                return user_ingredient.approved_ingredient, None
+            return None, user_ingredient
+
+        name = normalize_ingredient_name(item.get("name", ""))
+        user_ingredient, _ = UserIngredient.objects.get_or_create(
+            user=request.user,
+            name=name,
+            status=UserIngredientStatus.UNDER_REVIEW,
+        )
+        return None, user_ingredient
 
     def _replace_instructions(self, recipe, instruction_items):
         old_instruction_ids = list(recipe.recipe_instructions.values_list("instruction_id", flat=True))
@@ -229,7 +315,30 @@ class UnitSerializer(serializers.Serializer):
     label = serializers.CharField()
 
 
+class IngredientAliasSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IngredientAlias
+        fields = ["id", "name"]
+
+    def get_name(self, obj):
+        return obj.display_name
+
+
 class IngredientSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
+    aliases = IngredientAliasSerializer(many=True, read_only=True)
+
     class Meta:
         model = Ingredient
-        fields = ["id", "name"]
+        fields = ["id", "name", "category", "aliases"]
+
+    def get_name(self, obj):
+        return obj.display_name
+
+    def get_category(self, obj):
+        if not obj.category:
+            return ""
+        return obj.category.title()

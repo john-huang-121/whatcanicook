@@ -17,7 +17,11 @@ def recipe_queryset_for(user):
     return (
         Recipe.objects.visible_to(user)
         .select_related("created_by")
-        .prefetch_related("recipe_ingredients__ingredient", "recipe_instructions__instruction")
+        .prefetch_related(
+            "recipe_ingredients__ingredient",
+            "recipe_ingredients__user_ingredient",
+            "recipe_instructions__instruction",
+        )
         .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
 
@@ -26,7 +30,11 @@ def public_recipe_queryset():
     return (
         Recipe.objects.filter(is_public=True)
         .select_related("created_by")
-        .prefetch_related("recipe_ingredients__ingredient", "recipe_instructions__instruction")
+        .prefetch_related(
+            "recipe_ingredients__ingredient",
+            "recipe_ingredients__user_ingredient",
+            "recipe_instructions__instruction",
+        )
         .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
 
@@ -116,7 +124,11 @@ class SavedRecipeListView(APIView):
         saved_items = (
             SavedRecipe.objects.filter(user=request.user)
             .select_related("recipe__created_by")
-            .prefetch_related("recipe__recipe_ingredients__ingredient", "recipe__recipe_instructions__instruction")
+            .prefetch_related(
+                "recipe__recipe_ingredients__ingredient",
+                "recipe__recipe_ingredients__user_ingredient",
+                "recipe__recipe_instructions__instruction",
+            )
             .order_by("-created_at")
         )
         recipes = [item.recipe for item in saved_items if item.recipe.can_view(request.user)]
@@ -133,7 +145,11 @@ class DashboardView(APIView):
         saved_items = (
             SavedRecipe.objects.filter(user=request.user)
             .select_related("recipe__created_by")
-            .prefetch_related("recipe__recipe_ingredients__ingredient", "recipe__recipe_instructions__instruction")
+            .prefetch_related(
+                "recipe__recipe_ingredients__ingredient",
+                "recipe__recipe_ingredients__user_ingredient",
+                "recipe__recipe_instructions__instruction",
+            )
             .order_by("-created_at")[:12]
         )
         saved_recipes = [item.recipe for item in saved_items if item.recipe.can_view(request.user)]
@@ -151,4 +167,3 @@ class DashboardView(APIView):
                 },
             }
         )
-

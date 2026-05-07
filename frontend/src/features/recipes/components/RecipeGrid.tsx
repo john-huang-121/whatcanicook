@@ -1,3 +1,6 @@
+import ButtonBase from '@mui/material/ButtonBase'
+import Card from '@mui/material/Card'
+import Chip from '@mui/material/Chip'
 import { recipeImage } from '../../../config/constants'
 import type { Navigate, Recipe } from '../../../types'
 
@@ -5,15 +8,20 @@ export function RecipeGrid({ recipes, navigate }: { recipes: Recipe[]; navigate:
   return (
     <div className="recipe-grid">
       {recipes.map((recipe) => (
-        <article className="recipe-card" key={recipe.id}>
-          <button type="button" onClick={() => navigate(`/recipes/${recipe.id}`)}>
+        <Card component="article" className="recipe-card" key={recipe.id}>
+          <ButtonBase
+            component="button"
+            className="recipe-card-button"
+            type="button"
+            onClick={() => navigate(`/recipes/${recipe.id}`)}
+          >
             <div className="recipe-card-image">
               <img src={recipeImage} alt="" />
             </div>
             <div className="recipe-card-body">
               <div className="recipe-card-tags">
-                <span className="recipe-tag">{recipe.cuisine_label}</span>
-                {!recipe.is_public && <strong className="recipe-privacy">Private</strong>}
+                <Chip className="recipe-tag" label={recipe.cuisine_label} size="small" />
+                {!recipe.is_public && <Chip className="recipe-privacy" color="error" label="Private" size="small" />}
               </div>
               <h2>{recipe.title}</h2>
               <p className="recipe-card-author">By {recipe.created_by_username}</p>
@@ -35,8 +43,8 @@ export function RecipeGrid({ recipes, navigate }: { recipes: Recipe[]; navigate:
                 {recipe.like_count} likes / {recipe.save_count} saves
               </p>
             </div>
-          </button>
-        </article>
+          </ButtonBase>
+        </Card>
       ))}
     </div>
   )

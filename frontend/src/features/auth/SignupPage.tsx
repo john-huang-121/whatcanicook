@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import { AppLink } from '../../components/AppLink'
 import { AuthPanel } from './components/AuthPanel'
 import { apiFetch } from '../../lib/api'
@@ -35,50 +38,51 @@ export function SignupPage({ setAuth, navigate }: { setAuth: SetAuth; navigate: 
   return (
     <AuthPanel title="Create Account">
       <form onSubmit={(event) => void submit(event)} className="stacked-form">
-        {error && <p className="form-error">{error}</p>}
-        <label>
-          Username
-          <input value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} required />
-        </label>
-        <label>
-          Email
-          <input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
-        </label>
+        {error && <Alert severity="error">{error}</Alert>}
+        <TextField
+          label="Username"
+          value={form.username}
+          onChange={(event) => setForm({ ...form, username: event.target.value })}
+          required
+        />
+        <TextField
+          label="Email"
+          type="email"
+          value={form.email}
+          onChange={(event) => setForm({ ...form, email: event.target.value })}
+          required
+        />
         <div className="form-grid">
-          <label>
-            First name
-            <input
-              value={form.first_name}
-              onChange={(event) => setForm({ ...form, first_name: event.target.value })}
-              required
-            />
-          </label>
-          <label>
-            Last name
-            <input value={form.last_name} onChange={(event) => setForm({ ...form, last_name: event.target.value })} required />
-          </label>
+          <TextField
+            label="First name"
+            value={form.first_name}
+            onChange={(event) => setForm({ ...form, first_name: event.target.value })}
+            required
+          />
+          <TextField
+            label="Last name"
+            value={form.last_name}
+            onChange={(event) => setForm({ ...form, last_name: event.target.value })}
+            required
+          />
         </div>
-        <label>
-          Password
-          <input
-            type="password"
-            value={form.password1}
-            onChange={(event) => setForm({ ...form, password1: event.target.value })}
-            required
-          />
-        </label>
-        <label>
-          Confirm password
-          <input
-            type="password"
-            value={form.password2}
-            onChange={(event) => setForm({ ...form, password2: event.target.value })}
-            required
-          />
-        </label>
-        <button type="submit" className="primary-button">
+        <TextField
+          label="Password"
+          type="password"
+          value={form.password1}
+          onChange={(event) => setForm({ ...form, password1: event.target.value })}
+          required
+        />
+        <TextField
+          label="Confirm password"
+          type="password"
+          value={form.password2}
+          onChange={(event) => setForm({ ...form, password2: event.target.value })}
+          required
+        />
+        <Button type="submit" className="primary-button" variant="contained">
           Create Account
-        </button>
+        </Button>
         <p className="muted">
           Already have an account?{' '}
           <AppLink to="/login" navigate={navigate}>

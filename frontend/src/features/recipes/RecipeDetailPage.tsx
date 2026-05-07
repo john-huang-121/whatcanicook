@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import { LoadingPage } from '../../components/LoadingPage'
 import { MessagePage } from '../../components/MessagePage'
 import { RecipeFact } from './components/RecipeFact'
@@ -104,17 +107,20 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
               <p className="muted">{recipe.author_follower_count} followers</p>
             </div>
             <div className="status-stack">
-              <span className={recipe.is_public ? 'pill success' : 'pill danger'}>
-                {recipe.is_public ? 'Public' : 'Private'}
-              </span>
+              <Chip color={recipe.is_public ? 'success' : 'error'} label={recipe.is_public ? 'Public' : 'Private'} />
               {recipe.is_owner && (
                 <div className="mini-actions">
-                  <button type="button" onClick={() => navigate(`/recipes/${recipe.id}/edit`)}>
+                  <Button type="button" variant="text" onClick={() => navigate(`/recipes/${recipe.id}/edit`)}>
                     Edit
-                  </button>
-                  <button type="button" className="danger-link" onClick={() => navigate(`/recipes/${recipe.id}/delete`)}>
+                  </Button>
+                  <Button
+                    type="button"
+                    color="error"
+                    variant="text"
+                    onClick={() => navigate(`/recipes/${recipe.id}/delete`)}
+                  >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -122,35 +128,42 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
 
           <div className="social-actions">
             {recipe.is_public && !recipe.is_owner && (
-              <button
+              <Button
                 type="button"
                 className={recipe.is_liked ? 'primary-button' : 'secondary-button'}
+                variant={recipe.is_liked ? 'contained' : 'outlined'}
                 onClick={() => void toggleRecipeAction('like')}
-                disabled={busyAction === 'like'}
+                loading={busyAction === 'like'}
               >
                 {recipe.is_liked ? 'Liked' : 'Like'} ({recipe.like_count})
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
               className={recipe.is_saved ? 'primary-button' : 'secondary-button'}
+              variant={recipe.is_saved ? 'contained' : 'outlined'}
               onClick={() => void toggleRecipeAction('save')}
-              disabled={busyAction === 'save'}
+              loading={busyAction === 'save'}
             >
               {recipe.is_saved ? 'Saved' : 'Save'} ({recipe.save_count})
-            </button>
+            </Button>
             {recipe.is_public && !recipe.is_owner && (
-              <button
+              <Button
                 type="button"
                 className={recipe.is_following_author ? 'primary-button' : 'secondary-button'}
+                variant={recipe.is_following_author ? 'contained' : 'outlined'}
                 onClick={() => void toggleFollowAuthor()}
-                disabled={busyAction === 'follow'}
+                loading={busyAction === 'follow'}
               >
                 {recipe.is_following_author ? 'Following' : `Follow ${recipe.created_by_username}`}
-              </button>
+              </Button>
             )}
           </div>
-          {actionError && <p className="form-error compact-error">{actionError}</p>}
+          {actionError && (
+            <Alert className="compact-error" severity="error">
+              {actionError}
+            </Alert>
+          )}
 
           {recipe.description && <p className="lead">{recipe.description}</p>}
 
@@ -169,6 +182,9 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
                   <li key={item.id}>
                     {`${item.quantity} ${[item.unit_label, item.name].filter(Boolean).join(' ')}`}
                     {item.note && <span className="muted"> ({item.note})</span>}
+                    {item.review_status === 'under_review' && (
+                      <span className="ingredient-review-status"> - Under review</span>
+                    )}
                   </li>
                 ))}
               </ul>

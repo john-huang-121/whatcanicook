@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
 import { apiFetch } from '../../lib/api'
 import type { AuthState, Navigate, Recipe } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
@@ -44,15 +46,15 @@ export function DeleteRecipePage({ auth, navigate, recipeId }: { auth: AuthState
     <section className="page-band">
       <div className="form-shell compact">
         <h1>Delete Recipe</h1>
-        {error && <p className="form-error">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <p>Confirm that you want to delete {recipe ? <strong>{recipe.title}</strong> : 'this recipe'}.</p>
         <div className="action-row">
-          <button type="button" className="danger-button" onClick={() => void deleteRecipe()}>
+          <Button type="button" color="error" className="danger-button" variant="contained" onClick={() => void deleteRecipe()}>
             Delete
-          </button>
-          <button type="button" className="text-button" onClick={() => navigate(`/recipes/${recipeId}`)}>
+          </Button>
+          <Button type="button" className="text-button" variant="text" onClick={() => navigate(`/recipes/${recipeId}`)}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </section>

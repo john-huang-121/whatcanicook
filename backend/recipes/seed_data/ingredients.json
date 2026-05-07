@@ -1,0 +1,252 @@
+[
+  {
+    "name": "salt",
+    "category": "seasoning",
+    "aliases": ["sea salt", "kosher salt"]
+  },
+  {
+    "name": "black pepper",
+    "category": "seasoning",
+    "aliases": ["pepper", "ground black pepper"]
+  },
+  {
+    "name": "olive oil",
+    "category": "oil",
+    "aliases": ["extra virgin olive oil", "evoo"]
+  },
+  {
+    "name": "vegetable oil",
+    "category": "oil",
+    "aliases": ["neutral oil", "canola oil"]
+  },
+  {
+    "name": "butter",
+    "category": "dairy",
+    "aliases": ["unsalted butter", "salted butter"]
+  },
+  {
+    "name": "all-purpose flour",
+    "category": "baking",
+    "aliases": ["ap flour", "plain flour"]
+  },
+  {
+    "name": "granulated sugar",
+    "category": "baking",
+    "aliases": ["white sugar", "sugar"]
+  },
+  {
+    "name": "brown sugar",
+    "category": "baking",
+    "aliases": ["light brown sugar", "dark brown sugar"]
+  },
+  {
+    "name": "baking powder",
+    "category": "baking",
+    "aliases": []
+  },
+  {
+    "name": "baking soda",
+    "category": "baking",
+    "aliases": ["bicarbonate of soda"]
+  },
+  {
+    "name": "egg",
+    "category": "dairy",
+    "aliases": ["eggs", "large egg"]
+  },
+  {
+    "name": "milk",
+    "category": "dairy",
+    "aliases": ["whole milk", "2 percent milk"]
+  },
+  {
+    "name": "heavy cream",
+    "category": "dairy",
+    "aliases": ["cream", "whipping cream"]
+  },
+  {
+    "name": "cheddar cheese",
+    "category": "dairy",
+    "aliases": ["cheddar", "shredded cheddar"]
+  },
+  {
+    "name": "parmesan cheese",
+    "category": "dairy",
+    "aliases": ["parmesan", "parmigiano reggiano"]
+  },
+  {
+    "name": "mozzarella cheese",
+    "category": "dairy",
+    "aliases": ["mozzarella", "fresh mozzarella"]
+  },
+  {
+    "name": "chicken breast",
+    "category": "meat",
+    "aliases": ["chicken breasts", "boneless chicken breast", "chikcen breast"]
+  },
+  {
+    "name": "chicken thigh",
+    "category": "meat",
+    "aliases": ["chicken thighs", "boneless chicken thigh"]
+  },
+  {
+    "name": "ground beef",
+    "category": "meat",
+    "aliases": ["minced beef", "hamburger meat"]
+  },
+  {
+    "name": "pork shoulder",
+    "category": "meat",
+    "aliases": ["pork butt", "boston butt"]
+  },
+  {
+    "name": "bacon",
+    "category": "meat",
+    "aliases": ["sliced bacon"]
+  },
+  {
+    "name": "salmon",
+    "category": "seafood",
+    "aliases": ["salmon fillet", "salmon filet"]
+  },
+  {
+    "name": "shrimp",
+    "category": "seafood",
+    "aliases": ["prawns", "peeled shrimp"]
+  },
+  {
+    "name": "canned tuna",
+    "category": "seafood",
+    "aliases": ["tuna", "tuna fish"]
+  },
+  {
+    "name": "tofu",
+    "category": "protein",
+    "aliases": ["firm tofu", "extra firm tofu"]
+  },
+  {
+    "name": "chickpeas",
+    "category": "legume",
+    "aliases": ["garbanzo beans", "garbanzo"]
+  },
+  {
+    "name": "black beans",
+    "category": "legume",
+    "aliases": ["canned black beans"]
+  },
+  {
+    "name": "lentils",
+    "category": "legume",
+    "aliases": ["brown lentils", "green lentils"]
+  },
+  {
+    "name": "white rice",
+    "category": "grain",
+    "aliases": ["long grain rice", "jasmine rice"]
+  },
+  {
+    "name": "brown rice",
+    "category": "grain",
+    "aliases": []
+  },
+  {
+    "name": "pasta",
+    "category": "grain",
+    "aliases": ["spaghetti", "penne"]
+  },
+  {
+    "name": "bread",
+    "category": "grain",
+    "aliases": ["sandwich bread", "sourdough bread"]
+  },
+  {
+    "name": "potato",
+    "category": "vegetable",
+    "aliases": ["potatoes", "russet potato"]
+  },
+  {
+    "name": "sweet potato",
+    "category": "vegetable",
+    "aliases": ["sweet potatoes"]
+  },
+  {
+    "name": "onion",
+    "category": "vegetable",
+    "aliases": ["yellow onion", "white onion"]
+  },
+  {
+    "name": "garlic",
+    "category": "vegetable",
+    "aliases": ["garlic clove", "garlic cloves"]
+  },
+  {
+    "name": "carrot",
+    "category": "vegetable",
+    "aliases": ["carrots"]
+  },
+  {
+    "name": "celery",
+    "category": "vegetable",
+    "aliases": ["celery stalk", "celery rib"]
+  },
+  {
+    "name": "bell pepper",
+    "category": "vegetable",
+    "aliases": ["red bell pepper", "green bell pepper"]
+  },
+  {
+    "name": "tomato",
+    "category": "vegetable",
+    "aliases": ["tomatoes", "roma tomato"]
+  },
+  {
+    "name": "tomato paste",
+    "category": "pantry",
+    "aliases": []
+  },
+  {
+    "name": "spinach",
+    "category": "vegetable",
+    "aliases": ["baby spinach"]
+  },
+  {
+    "name": "kale",
+    "category": "vegetable",
+    "aliases": ["lacinato kale", "curly kale"]
+  },
+  {
+    "name": "broccoli",
+    "category": "vegetable",
+    "aliases": ["broccoli florets"]
+  },
+  {
+    "name": "mushroom",
+    "category": "vegetable",
+    "aliases": ["mushrooms", "cremini mushroom"]
+  },
+  {
+    "name": "lemon",
+    "category": "fruit",
+    "aliases": ["lemons", "lemon juice"]
+  },
+  {
+    "name": "lime",
+    "category": "fruit",
+    "aliases": ["limes", "lime juice"]
+  },
+  {
+    "name": "parsley",
+    "category": "herb",
+    "aliases": ["fresh parsley", "flat leaf parsley"]
+  },
+  {
+    "name": "cilantro",
+    "category": "herb",
+    "aliases": ["fresh cilantro", "coriander leaves"]
+  },
+  {
+    "name": "basil",
+    "category": "herb",
+    "aliases": ["fresh basil", "basil leaves"]
+  }
+]

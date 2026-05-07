@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Avatar from '@mui/material/Avatar'
+import Button from '@mui/material/Button'
+import Divider from '@mui/material/Divider'
+import Paper from '@mui/material/Paper'
+import TextField from '@mui/material/TextField'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import dayjs from 'dayjs'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
-import { ProfileRecipeSection } from './components/ProfileRecipeSection'
 import { apiFetch } from '../../lib/api'
-import type { AuthState, Navigate, Profile, Recipe, SetAuth } from '../../types'
+import type { AuthState, Navigate, Profile, SetAuth } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 
 export function ProfilePage({
@@ -18,10 +25,8 @@ export function ProfilePage({
   setAuth: SetAuth
 }) {
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [recipes, setRecipes] = useState<Recipe[]>([])
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
-  const [recipeError, setRecipeError] = useState('')
 
   useEffect(() => {
     if (!auth.authenticated) return
@@ -37,28 +42,10 @@ export function ProfilePage({
         setError(formatErrors(requestError))
       })
 
-    apiFetch<Recipe[]>('/api/recipes/?mine=true')
-      .then((response) => {
-        if (!active) return
-        setRecipes(response)
-      })
-      .catch((requestError) => {
-        if (!active) return
-        setRecipeError(formatErrors(requestError))
-      })
-
     return () => {
       active = false
     }
   }, [auth.authenticated])
-
-  const groupedRecipes = useMemo(
-    () => ({
-      publicRecipes: recipes.filter((recipe) => recipe.is_public),
-      privateRecipes: recipes.filter((recipe) => !recipe.is_public),
-    }),
-    [recipes],
-  )
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
@@ -72,8 +59,21 @@ export function ProfilePage({
     return <LoadingPage message="Loading profile..." />
   }
 
+  const displayName = profile.display_name || auth.user.username
+  const avatarInitials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+
   function updateProfile(field: keyof Profile, value: string) {
     setProfile((current) => (current ? { ...current, [field]: value } : current))
+  }
+
+  function updateBirthDate(value: dayjs.Dayjs | null) {
+    updateProfile('birth_date', value?.isValid() ? value.format('YYYY-MM-DD') : '')
   }
 
   async function submit(event: FormEvent) {
@@ -109,69 +109,84 @@ export function ProfilePage({
   return (
     <section className="page-band">
       <div className="page-inner narrow">
-        <section className="profile-summary">
-          <div>
-            <p className="eyebrow">Profile</p>
-            <h1>{profile.display_name}</h1>
-            <p>{auth.user.email}</p>
+        <Paper component="section" className="profile-card" elevation={0}>
+          <div className="profile-card-header">
+            <Avatar
+              alt={displayName}
+              className="profile-avatar"
+              src={profile.profile_picture_url || undefined}
+            >
+              {avatarInitials}
+            </Avatar>
+            <div>
+              <p className="eyebrow">Profile</p>
+              <h1>{displayName}</h1>
+              <p className="muted">{auth.user.email}</p>
+            </div>
           </div>
-          {profile.profile_picture_url && <img src={profile.profile_picture_url} alt={profile.display_name} />}
-        </section>
-
-        <section className="form-shell">
-          <p className="eyebrow">Profile Details</p>
-          <h2>Edit your profile</h2>
-          {error && <p className="form-error">{error}</p>}
+          {error && <Alert severity="error">{error}</Alert>}
           <form onSubmit={(event) => void submit(event)} className="stacked-form">
+            <Divider className="profile-section-divider" textAlign="left">
+              Details
+            </Divider>
             <div className="form-grid">
-              <label>
-                First name
-                <input value={profile.first_name} onChange={(event) => updateProfile('first_name', event.target.value)} />
-              </label>
-              <label>
-                Last name
-                <input value={profile.last_name} onChange={(event) => updateProfile('last_name', event.target.value)} />
-              </label>
+              <TextField
+                label="First name"
+                value={profile.first_name}
+                onChange={(event) => updateProfile('first_name', event.target.value)}
+              />
+              <TextField
+                label="Last name"
+                value={profile.last_name}
+                onChange={(event) => updateProfile('last_name', event.target.value)}
+              />
+              <DatePicker
+                className="profile-date-picker"
+                label="Birth date"
+                value={profile.birth_date ? dayjs(profile.birth_date) : null}
+                onChange={updateBirthDate}
+                slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+              />
             </div>
-            <label>
-              Profile picture
-              <input type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-            </label>
+            <div className="file-upload-row">
+              <TextField
+                label="Profile picture"
+                type="file"
+                onChange={(event) => setFile((event.target as HTMLInputElement).files?.[0] ?? null)}
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { accept: 'image/*' } }}
+              />
+              <span className="muted">{file?.name ?? 'No file selected'}</span>
+            </div>
+            <Divider className="profile-section-divider" textAlign="left">
+              Social
+            </Divider>
             <div className="form-grid">
-              <label>
-                Twitter/X
-                <input value={profile.twitter_x_url} onChange={(event) => updateProfile('twitter_x_url', event.target.value)} />
-              </label>
-              <label>
-                Instagram
-                <input value={profile.instagram_url} onChange={(event) => updateProfile('instagram_url', event.target.value)} />
-              </label>
-              <label>
-                Facebook
-                <input value={profile.facebook_url} onChange={(event) => updateProfile('facebook_url', event.target.value)} />
-              </label>
-              <label>
-                LinkedIn
-                <input value={profile.linkedin_url} onChange={(event) => updateProfile('linkedin_url', event.target.value)} />
-              </label>
-              <label>
-                Birth date
-                <input
-                  type="date"
-                  value={profile.birth_date ?? ''}
-                  onChange={(event) => updateProfile('birth_date', event.target.value)}
-                />
-              </label>
+              <TextField
+                label="Twitter/X"
+                value={profile.twitter_x_url}
+                onChange={(event) => updateProfile('twitter_x_url', event.target.value)}
+              />
+              <TextField
+                label="Instagram"
+                value={profile.instagram_url}
+                onChange={(event) => updateProfile('instagram_url', event.target.value)}
+              />
+              <TextField
+                label="Facebook"
+                value={profile.facebook_url}
+                onChange={(event) => updateProfile('facebook_url', event.target.value)}
+              />
+              <TextField
+                label="LinkedIn"
+                value={profile.linkedin_url}
+                onChange={(event) => updateProfile('linkedin_url', event.target.value)}
+              />
             </div>
-            <button type="submit" className="primary-button">
+            <Button type="submit" className="primary-button" variant="contained">
               Save Profile
-            </button>
+            </Button>
           </form>
-        </section>
-
-        {recipeError && <p className="form-error">{recipeError}</p>}
-        <ProfileRecipeSection title="Public" recipes={groupedRecipes.publicRecipes} navigate={navigate} />
-        <ProfileRecipeSection title="Private" recipes={groupedRecipes.privateRecipes} navigate={navigate} />
+        </Paper>
       </div>
     </section>
   )

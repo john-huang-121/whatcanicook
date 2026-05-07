@@ -1,6 +1,15 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+
+
+def normalize_ingredient_name(value):
+    return " ".join(value.strip().lower().split())
+
+
+def titleize_ingredient_name(value):
+    return normalize_ingredient_name(value).title()
 
 
 class RecipeQuerySet(models.QuerySet):
@@ -133,12 +142,106 @@ class Recipe(models.Model):
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    category = models.CharField(max_length=80, blank=True, default="")
 
     def __str__(self):
-        return self.name
+        return self.display_name
+
+    @property
+    def display_name(self):
+        return titleize_ingredient_name(self.name)
+
+    def save(self, *args, **kwargs):
+        self.name = normalize_ingredient_name(self.name)
+        self.category = normalize_ingredient_name(self.category)
+        super().save(*args, **kwargs)
     
     def find_all_ingredient_recipes(self):
         return self.recipes.all()
+
+
+class IngredientAlias(models.Model):
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='aliases')
+    name = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        verbose_name_plural = "ingredient aliases"
+
+    def __str__(self):
+        return f"{self.display_name} -> {self.ingredient.display_name}"
+
+    @property
+    def display_name(self):
+        return titleize_ingredient_name(self.name)
+
+    def save(self, *args, **kwargs):
+        self.name = normalize_ingredient_name(self.name)
+        super().save(*args, **kwargs)
+
+
+class UserIngredientStatus(models.TextChoices):
+    UNDER_REVIEW = 'under_review', 'Under review'
+    APPROVED = 'approved', 'Approved'
+    REJECTED = 'rejected', 'Rejected'
+
+
+class UserIngredient(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='user_ingredients',
+    )
+    name = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20,
+        choices=UserIngredientStatus.choices,
+        default=UserIngredientStatus.UNDER_REVIEW,
+    )
+    approved_ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.SET_NULL,
+        related_name='approved_user_ingredients',
+        blank=True,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["status", "name", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"],
+                condition=Q(status=UserIngredientStatus.UNDER_REVIEW),
+                name="unique_under_review_user_ingredient",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.display_name} ({self.get_status_display()})"
+
+    @property
+    def display_name(self):
+        return titleize_ingredient_name(self.name)
+
+    def save(self, *args, **kwargs):
+        self.name = normalize_ingredient_name(self.name)
+        super().save(*args, **kwargs)
+
+    def approve(self, ingredient=None):
+        approved_ingredient = ingredient or self.approved_ingredient
+        if approved_ingredient is None:
+            approved_ingredient, _ = Ingredient.objects.get_or_create(name=self.name)
+
+        self.approved_ingredient = approved_ingredient
+        self.status = UserIngredientStatus.APPROVED
+        self.reviewed_at = timezone.now()
+        self.save(update_fields=["approved_ingredient", "status", "reviewed_at", "updated_at"])
+        self.recipe_ingredients.update(ingredient=approved_ingredient, user_ingredient=None)
+        return approved_ingredient
 
 class Instruction(models.Model):
     text = models.TextField()
@@ -148,16 +251,46 @@ class Instruction(models.Model):
          
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name='recipe_ingredients')
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='recipe_ingredients')
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='recipe_ingredients',
+        blank=True,
+        null=True,
+    )
+    user_ingredient = models.ForeignKey(
+        UserIngredient,
+        on_delete=models.CASCADE,
+        related_name='recipe_ingredients',
+        blank=True,
+        null=True,
+    )
     quantity = models.FloatField()
     unit = models.CharField(max_length=20, choices=Unit.choices, blank=True, default=Unit.NONE)
     note = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(ingredient__isnull=False, user_ingredient__isnull=True)
+                    | Q(ingredient__isnull=True, user_ingredient__isnull=False)
+                ),
+                name="recipeingredient_has_one_ingredient_source",
+            ),
+        ]
+
+    @property
+    def display_name(self):
+        if self.ingredient_id:
+            return self.ingredient.display_name
+        return self.user_ingredient.display_name
 
     def __str__(self):
         parts = [str(self.quantity)]
         if self.unit:
             parts.append(self.get_unit_display())
-        parts.append(self.ingredient.name)
+        parts.append(self.display_name)
         return " ".join(parts)
 
 class RecipeInstruction(models.Model):

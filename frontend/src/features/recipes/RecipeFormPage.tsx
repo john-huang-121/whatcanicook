@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useId, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import InputAdornment from '@mui/material/InputAdornment'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
 import type {
   AuthState,
   Cuisine,
+  Ingredient,
   Navigate,
   Recipe,
   RecipeIngredientInput,
@@ -35,7 +44,29 @@ const emptyRecipeForm: RecipeFormState = {
   cuisine: 'american',
   is_public: true,
   instruction_items: [{ text: '' }],
-  ingredient_items: [{ name: '', quantity: '', unit: '', note: '' }],
+  ingredient_items: [{ ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' }],
+}
+
+const maximumIngredientSuggestions = 6
+
+function fieldSuffix(label: string, className = '') {
+  return (
+    <InputAdornment className={`field-suffix ${className}`.trim()} disableTypography position="end">
+      {label}
+    </InputAdornment>
+  )
+}
+
+function ingredientSourceFor(item: RecipeIngredientInput) {
+  if (item.ingredient_id !== null) {
+    return { className: 'catalog', label: 'Catalog' }
+  }
+
+  if (item.user_ingredient_id !== null || item.name.trim()) {
+    return { className: 'user', label: 'User' }
+  }
+
+  return null
 }
 
 function recipeToForm(recipe: Recipe): RecipeFormState {
@@ -54,12 +85,14 @@ function recipeToForm(recipe: Recipe): RecipeFormState {
       : [{ text: '' }],
     ingredient_items: recipe.ingredients.length
       ? recipe.ingredients.map((item) => ({
+          ingredient_id: item.ingredient_id,
+          user_ingredient_id: item.user_ingredient_id,
           name: item.name,
           quantity: item.quantity.toString(),
           unit: item.unit,
           note: item.note,
         }))
-      : [{ name: '', quantity: '', unit: '', note: '' }],
+      : [{ ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' }],
   }
 }
 
@@ -72,24 +105,32 @@ export function RecipeFormPage({
   navigate: Navigate
   recipeId?: number
 }) {
+  const recipeFormId = useId()
   const [form, setForm] = useState<RecipeFormState>(emptyRecipeForm)
   const [cuisines, setCuisines] = useState<Cuisine[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [unitOptions, setUnitOptions] = useState<RecipeUnit[]>([])
+  const [openIngredientIndex, setOpenIngredientIndex] = useState<number | null>(null)
+  const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
   const [error, setError] = useState('')
   const editing = recipeId !== undefined
+  const prepTimeInputId = `${recipeFormId}-prep-time`
+  const cookTimeInputId = `${recipeFormId}-cook-time`
 
-  // Fetch cuisines and unit options on mount
+  // Fetch form option lists on mount
   useEffect(() => {
     let active = true
 
-    const fetchCuisinesAndUnitsList = async () => {
+    const fetchFormOptions = async () => {
       try {
-        const [cuisineResponse, unitResponse] = await Promise.all([
+        const [cuisineResponse, ingredientResponse, unitResponse] = await Promise.all([
           apiFetch<Cuisine[]>('/api/cuisines/'),
+          apiFetch<Ingredient[]>('/api/ingredients/'),
           apiFetch<RecipeUnit[]>('/api/units/'),
         ])
         if (!active) return
         setCuisines(cuisineResponse)
+        setIngredients(ingredientResponse)
         setUnitOptions(unitResponse)
       } catch (requestError) {
         if (!active) return
@@ -97,7 +138,7 @@ export function RecipeFormPage({
       }
     }
 
-    fetchCuisinesAndUnitsList()
+    fetchFormOptions()
 
     return () => {
       active = false
@@ -167,6 +208,80 @@ export function RecipeFormPage({
     }))
   }
 
+  function updateIngredientName(index: number, value: string) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, ingredient_id: null, user_ingredient_id: null, name: value }
+          : item,
+      ),
+    }))
+    setOpenIngredientIndex(index)
+    setActiveIngredientSuggestionIndex(-1)
+  }
+
+  function ingredientSuggestionsFor(value: string) {
+    const normalizedValue = value.trim().toLowerCase()
+    if (!normalizedValue) {
+      return []
+    }
+
+    return ingredients
+      .filter((ingredient) => {
+        const matchesName = ingredient.name.toLowerCase().includes(normalizedValue)
+        const matchesAlias = ingredient.aliases.some((alias) => alias.name.toLowerCase().includes(normalizedValue))
+        return matchesName || matchesAlias
+      })
+      .slice(0, maximumIngredientSuggestions)
+  }
+
+  function chooseIngredient(index: number, ingredient: Ingredient) {
+    setForm((current) => ({
+      ...current,
+      ingredient_items: current.ingredient_items.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              ingredient_id: ingredient.id,
+              user_ingredient_id: null,
+              name: ingredient.name,
+            }
+          : item,
+      ),
+    }))
+    setOpenIngredientIndex(null)
+    setActiveIngredientSuggestionIndex(-1)
+  }
+
+  function handleIngredientKeyDown(index: number, event: KeyboardEvent<HTMLElement>) {
+    const suggestions = ingredientSuggestionsFor(form.ingredient_items[index]?.name ?? '')
+
+    if (openIngredientIndex !== index) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIngredientSuggestionIndex((current) => (suggestions.length ? (current + 1) % suggestions.length : -1))
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIngredientSuggestionIndex((current) =>
+        suggestions.length ? (current <= 0 ? suggestions.length - 1 : current - 1) : -1,
+      )
+    }
+
+    if (event.key === 'Enter' && activeIngredientSuggestionIndex >= 0 && suggestions[activeIngredientSuggestionIndex]) {
+      event.preventDefault()
+      chooseIngredient(index, suggestions[activeIngredientSuggestionIndex])
+    }
+
+    if (event.key === 'Escape') {
+      setOpenIngredientIndex(null)
+      setActiveIngredientSuggestionIndex(-1)
+    }
+  }
+
   function updateIngredientUnit(index: number, value: string) {
     const selectedUnit = unitOptions.find((unit) => unit.value === value)
     if (!selectedUnit) {
@@ -180,7 +295,10 @@ export function RecipeFormPage({
   function addIngredient() {
     setForm((current) => ({
       ...current,
-      ingredient_items: [...current.ingredient_items, { name: '', quantity: '', unit: '', note: '' }],
+      ingredient_items: [
+        ...current.ingredient_items,
+        { ingredient_id: null, user_ingredient_id: null, name: '', quantity: '', unit: '', note: '' },
+      ],
     }))
   }
 
@@ -189,12 +307,16 @@ export function RecipeFormPage({
       ...current,
       ingredient_items: current.ingredient_items.filter((_, itemIndex) => itemIndex !== index),
     }))
+    setOpenIngredientIndex(null)
+    setActiveIngredientSuggestionIndex(-1)
   }
 
   function ingredientItemsForPayload(): RecipePayload['ingredient_items'] {
     return form.ingredient_items
       .filter((ingredient) => ingredient.name.trim() && ingredient.quantity)
       .map((item) => ({
+        ingredient_id: item.ingredient_id,
+        user_ingredient_id: item.user_ingredient_id,
         name: item.name.trim(),
         quantity: Number(item.quantity),
         unit: item.unit,
@@ -240,113 +362,215 @@ export function RecipeFormPage({
     <section className="page-band">
       <div className="form-shell">
         <h1>{editing ? 'Update Recipe' : 'Create Recipe'}</h1>
-        {error && <p className="form-error">{error}</p>}
+        {error && <Alert severity="error">{error}</Alert>}
         <form onSubmit={(event) => void submit(event)} className="stacked-form">
-          <label>
-            Title
-            <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-          </label>
-          <label>
-            Description
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-          </label>
+          <TextField
+            label="Title"
+            value={form.title}
+            onChange={(event) => setForm({ ...form, title: event.target.value })}
+            required
+          />
+          <TextField
+            label="Description"
+            value={form.description}
+            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            multiline
+            minRows={4}
+          />
           <div className="form-grid">
-            <label>
-              Prep Time (minutes)
-              <input
+            <div className="form-field">
+              <label htmlFor={prepTimeInputId}>Prep Time</label>
+              <TextField
+                className="mui-suffixed-field"
+                fullWidth
+                hiddenLabel
+                id={prepTimeInputId}
+                size="small"
                 type="number"
-                min="0"
                 value={form.prep_time}
                 onChange={(event) => setForm({ ...form, prep_time: event.target.value })}
+                slotProps={{
+                  htmlInput: { min: 0 },
+                  input: {
+                    endAdornment: fieldSuffix('minutes'),
+                  },
+                }}
               />
-            </label>
-            <label>
-              Cook Time (minutes)
-              <input
+            </div>
+            <div className="form-field">
+              <label htmlFor={cookTimeInputId}>Cook Time</label>
+              <TextField
+                className="mui-suffixed-field"
+                fullWidth
+                hiddenLabel
+                id={cookTimeInputId}
+                required
+                size="small"
                 type="number"
-                min="1"
                 value={form.cook_time}
                 onChange={(event) => setForm({ ...form, cook_time: event.target.value })}
-                required
+                slotProps={{
+                  htmlInput: { min: 1 },
+                  input: {
+                    endAdornment: fieldSuffix('minutes'),
+                  },
+                }}
               />
-            </label>
-            <label>
-              Servings
-              <input
-                type="number"
-                min="1"
-                value={form.servings}
-                onChange={(event) => setForm({ ...form, servings: event.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Cuisine
-              <select value={form.cuisine} onChange={(event) => setForm({ ...form, cuisine: event.target.value })}>
-                {cuisines.map((cuisine) => (
-                  <option key={cuisine.value} value={cuisine.value}>
-                    {cuisine.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={form.is_public}
-              onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
+            </div>
+            <TextField
+              label="Servings"
+              type="number"
+              value={form.servings}
+              onChange={(event) => setForm({ ...form, servings: event.target.value })}
+              required
+              slotProps={{ htmlInput: { min: 1 } }}
             />
-            Public recipe
-          </label>
+            <TextField
+              label="Cuisine"
+              select
+              value={form.cuisine}
+              onChange={(event) => setForm({ ...form, cuisine: event.target.value })}
+            >
+                {cuisines.map((cuisine) => (
+                  <MenuItem key={cuisine.value} value={cuisine.value}>
+                    {cuisine.label}
+                  </MenuItem>
+                ))}
+            </TextField>
+          </div>
+          <FormControlLabel
+            className="checkbox-row"
+            control={
+              <Checkbox
+                checked={form.is_public}
+                onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
+              />
+            }
+            label="Public recipe"
+          />
 
           <section className="content-section">
             <div className="form-section-header">
               <h2>Ingredients</h2>
             </div>
             <div className="ingredient-editor">
-              {form.ingredient_items.map((item, index) => (
-                <div className="ingredient-row" key={`ingredient-${index}`}>
-                  <input
-                    aria-label="Quantity"
-                    placeholder="Qty"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.quantity}
-                    onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
-                  />
-                  <select
-                    aria-label="Unit"
-                    value={item.unit}
-                    onChange={(event) => updateIngredientUnit(index, event.target.value)}
-                  >
-                    {unitOptions.map((unit) => (
-                      <option key={unit.value || 'no-unit'} value={unit.value}>
-                        {unit.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    aria-label="Ingredient name"
-                    placeholder="Ingredient"
-                    value={item.name}
-                    onChange={(event) => updateIngredient(index, 'name', event.target.value)}
-                  />
-                  <input
-                    aria-label="Ingredient note"
-                    placeholder="Note"
-                    value={item.note}
-                    onChange={(event) => updateIngredient(index, 'note', event.target.value)}
-                  />
-                  <button type="button" onClick={() => removeIngredient(index)} disabled={form.ingredient_items.length === 1}>
-                    Remove
-                  </button>
-                </div>
-              ))}
-              <button type="button" className="secondary-button" onClick={addIngredient}>
+              {form.ingredient_items.map((item, index) => {
+                const suggestions = ingredientSuggestionsFor(item.name)
+                const showIngredientSuggestions =
+                  openIngredientIndex === index && item.name.trim().length > 0 && item.ingredient_id === null
+                const ingredientSource = ingredientSourceFor(item)
+                const ingredientSuggestionListId = `${recipeFormId}-ingredient-${index}`
+
+                return (
+                  <div className="ingredient-row" key={`ingredient-${index}`}>
+                    <TextField
+                      aria-label="Quantity"
+                      placeholder="Qty"
+                      type="number"
+                      value={item.quantity}
+                      onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
+                      slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+                    />
+                    <TextField
+                      aria-label="Unit"
+                      select
+                      value={item.unit}
+                      onChange={(event) => updateIngredientUnit(index, event.target.value)}
+                    >
+                      {unitOptions.map((unit) => (
+                        <MenuItem key={unit.value || 'no-unit'} value={unit.value}>
+                          {unit.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <div className="ingredient-combobox">
+                      <TextField
+                        className="mui-suffixed-field ingredient-name-field"
+                        fullWidth
+                        hiddenLabel
+                        id={`${recipeFormId}-ingredient-name-${index}`}
+                        placeholder="Ingredient"
+                        size="small"
+                        value={item.name}
+                        onBlur={() => setOpenIngredientIndex(null)}
+                        onChange={(event) => updateIngredientName(index, event.target.value)}
+                        onFocus={() => {
+                          setOpenIngredientIndex(index)
+                          setActiveIngredientSuggestionIndex(-1)
+                        }}
+                        onKeyDown={(event) => handleIngredientKeyDown(index, event)}
+                        slotProps={{
+                          htmlInput: {
+                            'aria-activedescendant':
+                              activeIngredientSuggestionIndex >= 0
+                                ? `${ingredientSuggestionListId}-${activeIngredientSuggestionIndex}`
+                                : undefined,
+                            'aria-autocomplete': 'list',
+                            'aria-controls': ingredientSuggestionListId,
+                            'aria-expanded': showIngredientSuggestions,
+                            'aria-label': 'Ingredient name',
+                            role: 'combobox',
+                          },
+                          input: {
+                            endAdornment: ingredientSource
+                              ? fieldSuffix(
+                                  ingredientSource.label,
+                                  `ingredient-source-suffix ${ingredientSource.className}`,
+                                )
+                              : null,
+                          },
+                        }}
+                      />
+                      {showIngredientSuggestions && (
+                        <div className="ingredient-suggestions" id={ingredientSuggestionListId} role="listbox">
+                          {suggestions.length ? (
+                            suggestions.map((ingredient, suggestionIndex) => (
+                              <ButtonBase
+                                aria-selected={suggestionIndex === activeIngredientSuggestionIndex}
+                                className={`ingredient-suggestion ${
+                                  suggestionIndex === activeIngredientSuggestionIndex ? 'active' : ''
+                                }`}
+                                component="button"
+                                id={`${ingredientSuggestionListId}-${suggestionIndex}`}
+                                key={ingredient.id}
+                                onMouseDown={(event) => {
+                                  event.preventDefault()
+                                  chooseIngredient(index, ingredient)
+                                }}
+                                role="option"
+                                type="button"
+                              >
+                                <span>{ingredient.name}</span>
+                                {ingredient.category && <small>{ingredient.category}</small>}
+                              </ButtonBase>
+                            ))
+                          ) : (
+                            <p className="ingredient-suggestion-status">No catalog matches</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <TextField
+                      aria-label="Ingredient note"
+                      placeholder="Note"
+                      value={item.note}
+                      onChange={(event) => updateIngredient(index, 'note', event.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      color="error"
+                      variant="outlined"
+                      onClick={() => removeIngredient(index)}
+                      disabled={form.ingredient_items.length === 1}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )
+              })}
+              <Button type="button" className="secondary-button" variant="contained" onClick={addIngredient}>
                 Add ingredient
-              </button>
+              </Button>
             </div>
           </section>
 
@@ -358,36 +582,40 @@ export function RecipeFormPage({
               {form.instruction_items.map((item, index) => (
                 <div className="instruction-row" key={`instruction-${index}`}>
                   <span className="step-number">{index + 1}</span>
-                  <textarea
+                  <TextField
                     aria-label={`Instruction step ${index + 1}`}
                     placeholder="Describe this step"
                     value={item.text}
                     onChange={(event) => updateInstruction(index, event.target.value)}
+                    multiline
+                    minRows={3}
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    color="error"
+                    variant="outlined"
                     onClick={() => removeInstruction(index)}
                     disabled={form.instruction_items.length === 1}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ))}
-              <button type="button" className="secondary-button" onClick={addInstruction}>
+              <Button type="button" className="secondary-button" variant="contained" onClick={addInstruction}>
                 Add instruction step
-              </button>
+              </Button>
             </div>
           </section>
 
           <div className="action-row">
-            <button type="submit" className="primary-button">
+            <Button type="submit" className="primary-button" variant="contained">
               {editing ? 'Save Changes' : 'Create Recipe'}
-            </button>
+            </Button>
             {editing && recipeId && (
-              <button type="button" className="text-button" onClick={() => navigate(`/recipes/${recipeId}`)}>
+              <Button type="button" className="text-button" variant="text" onClick={() => navigate(`/recipes/${recipeId}`)}>
                 Cancel
-              </button>
+              </Button>
             )}
           </div>
         </form>
