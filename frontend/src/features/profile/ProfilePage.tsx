@@ -11,8 +11,15 @@ import dayjs from 'dayjs'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
-import { apiFetch } from '../../lib/api'
-import type { AuthState, Navigate, Profile, SetAuth } from '../../types'
+import { ApiError, apiFetch } from '../../lib/api'
+import type {
+  AuthState,
+  AvatarUploadSignature,
+  Navigate,
+  Profile,
+  ProfileUpdatePayload,
+  SetAuth,
+} from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 
 export function ProfilePage({
@@ -27,6 +34,7 @@ export function ProfilePage({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!auth.authenticated) return
@@ -76,21 +84,65 @@ export function ProfilePage({
     updateProfile('birth_date', value?.isValid() ? value.format('YYYY-MM-DD') : '')
   }
 
+  async function uploadAvatar(selectedFile: File) {
+    const contentType = selectedFile.type || 'application/octet-stream'
+    const signature = await apiFetch<AvatarUploadSignature>('/api/auth/profile/avatar-upload/', {
+      method: 'POST',
+      body: {
+        filename: selectedFile.name,
+        content_type: contentType,
+        size: selectedFile.size,
+      },
+    })
+
+    const uploadBody = new FormData()
+    Object.entries(signature.fields).forEach(([key, value]) => {
+      uploadBody.append(key, value)
+    })
+    uploadBody.append('file', selectedFile)
+
+    const response = await fetch(signature.upload_url, {
+      method: 'POST',
+      body: uploadBody,
+    })
+
+    if (!response.ok) {
+      throw new Error(
+        `Avatar upload failed with status ${response.status}. Check S3 CORS and upload permissions.`,
+      )
+    }
+
+    return signature.profile_picture_key
+  }
+
+  function formatProfileError(requestError: unknown) {
+    if (requestError instanceof ApiError) {
+      return formatErrors(requestError)
+    }
+    if (requestError instanceof Error) {
+      return requestError.message
+    }
+    return formatErrors(requestError)
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
-
-    const body = new FormData()
-    body.set('first_name', profile.first_name)
-    body.set('last_name', profile.last_name)
-    body.set('twitter_x_url', profile.twitter_x_url)
-    body.set('instagram_url', profile.instagram_url)
-    body.set('facebook_url', profile.facebook_url)
-    body.set('linkedin_url', profile.linkedin_url)
-    if (profile.birth_date) body.set('birth_date', profile.birth_date)
-    if (file) body.set('profile_picture', file)
+    setSaving(true)
 
     try {
+      const profilePictureKey = file ? await uploadAvatar(file) : undefined
+      const body: ProfileUpdatePayload = {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        twitter_x_url: profile.twitter_x_url,
+        instagram_url: profile.instagram_url,
+        facebook_url: profile.facebook_url,
+        linkedin_url: profile.linkedin_url,
+        birth_date: profile.birth_date || null,
+        ...(profilePictureKey ? { profile_picture_key: profilePictureKey } : {}),
+      }
+
       const updatedProfile = await apiFetch<Profile>('/api/auth/profile/', {
         method: 'PATCH',
         body,
@@ -101,8 +153,11 @@ export function ProfilePage({
         authenticated: true,
         user: { ...auth.user, profile: updatedProfile },
       })
+      setFile(null)
     } catch (requestError) {
-      setError(formatErrors(requestError))
+      setError(formatProfileError(requestError))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -182,8 +237,8 @@ export function ProfilePage({
                 onChange={(event) => updateProfile('linkedin_url', event.target.value)}
               />
             </div>
-            <Button type="submit" className="primary-button" variant="contained">
-              Save Profile
+            <Button type="submit" className="primary-button" variant="contained" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Profile'}
             </Button>
           </form>
         </Paper>

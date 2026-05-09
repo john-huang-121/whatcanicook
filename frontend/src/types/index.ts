@@ -11,6 +11,26 @@ export type Profile = {
   birth_date: string | null
 }
 
+export type ProfileUpdatePayload = {
+  first_name: string
+  last_name: string
+  twitter_x_url: string
+  instagram_url: string
+  facebook_url: string
+  linkedin_url: string
+  birth_date: string | null
+  profile_picture_key?: string
+}
+
+export type AvatarUploadSignature = {
+  upload_url: string
+  fields: Record<string, string>
+  profile_picture_key: string
+  object_key: string
+  expires_in: number
+  max_bytes: number
+}
+
 export type User = {
   id: number
   username: string

@@ -1,8 +1,12 @@
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import SESSION_KEY, get_user_model
-from django.test import TestCase
+from django.core.files.storage import default_storage
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Profile
+from .storage_paths import profile_picture_prefix
 
 User = get_user_model()
 
@@ -131,6 +135,15 @@ class ProfileApiTests(TestCase):
     def test_profile_is_created_for_new_user(self):
         self.assertTrue(Profile.objects.filter(user=self.user).exists())
 
+    def test_profile_picture_uploads_use_default_storage(self):
+        field = Profile._meta.get_field("profile_picture")
+
+        self.assertIs(field.storage, default_storage)
+        self.assertEqual(
+            field.upload_to(self.user.profile, "avatar.png"),
+            f"{profile_picture_prefix(self.user.id)}/avatar.png",
+        )
+
     def test_user_name_helpers_use_profile(self):
         self.user.profile.first_name = "Jane"
         self.user.profile.last_name = "Doe"
@@ -165,3 +178,107 @@ class ProfileApiTests(TestCase):
         self.assertEqual(self.user.profile.facebook_url, "https://facebook.com/janetcook")
         self.assertEqual(self.user.profile.linkedin_url, "https://linkedin.com/in/janetcook")
         self.assertEqual(self.user.profile.birth_date.isoformat(), "1990-05-01")
+
+    @override_settings(USE_S3=True)
+    def test_user_can_update_profile_picture_from_presigned_upload_key(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.patch(
+            reverse("accounts:profile"),
+            {
+                "profile_picture_key": f"users/user_{self.user.id}/profile_pictures/avatar.png",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(
+            self.user.profile.profile_picture.name,
+            f"users/user_{self.user.id}/profile_pictures/avatar.png",
+        )
+
+    @override_settings(USE_S3=True)
+    def test_profile_picture_key_must_belong_to_current_user(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.patch(
+            reverse("accounts:profile"),
+            {
+                "profile_picture_key": "users/user_999/profile_pictures/avatar.png",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(
+        USE_S3=True,
+        AWS_STORAGE_BUCKET_NAME="test-bucket",
+        AWS_S3_REGION_NAME="us-west-1",
+        S3_STORAGE_OPTIONS={"location": "media"},
+        AVATAR_UPLOAD_MAX_BYTES=1024,
+        S3_PRESIGNED_UPLOAD_EXPIRES=300,
+    )
+    @patch("accounts.views.boto3.client")
+    def test_user_can_request_presigned_avatar_upload(self, client_factory):
+        self.client.login(username="jane", password="testpass123")
+        s3_client = Mock()
+        s3_client.generate_presigned_post.return_value = {
+            "url": "https://s3.example.test/",
+            "fields": {"key": "media/users/user_1/profile_pictures/avatar.png"},
+        }
+        client_factory.return_value = s3_client
+
+        response = self.client.post(
+            reverse("accounts:profile-avatar-upload"),
+            {
+                "filename": "avatar.png",
+                "content_type": "image/png",
+                "size": 512,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["upload_url"], "https://s3.example.test/")
+        self.assertTrue(
+            data["profile_picture_key"].startswith(f"users/user_{self.user.id}/profile_pictures/")
+        )
+        self.assertTrue(
+            data["object_key"].startswith(f"media/users/user_{self.user.id}/profile_pictures/")
+        )
+        s3_client.generate_presigned_post.assert_called_once()
+
+    @override_settings(USE_S3=False)
+    def test_presigned_avatar_upload_requires_s3(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.post(
+            reverse("accounts:profile-avatar-upload"),
+            {
+                "filename": "avatar.png",
+                "content_type": "image/png",
+                "size": 512,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(USE_S3=True, AVATAR_UPLOAD_MAX_BYTES=1024)
+    def test_presigned_avatar_upload_rejects_non_images(self):
+        self.client.login(username="jane", password="testpass123")
+
+        response = self.client.post(
+            reverse("accounts:profile-avatar-upload"),
+            {
+                "filename": "avatar.txt",
+                "content_type": "text/plain",
+                "size": 512,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
