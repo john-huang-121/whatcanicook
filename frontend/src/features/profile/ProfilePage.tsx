@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Avatar from '@mui/material/Avatar'
 import Button from '@mui/material/Button'
@@ -34,6 +34,7 @@ export function ProfilePage({
 }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -55,6 +56,20 @@ export function ProfilePage({
       active = false
     }
   }, [auth.authenticated])
+
+  useEffect(() => {
+    if (!file) {
+      setAvatarPreviewUrl('')
+      return
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    setAvatarPreviewUrl(previewUrl)
+
+    return () => {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }, [file])
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
@@ -83,6 +98,11 @@ export function ProfilePage({
 
   function updateBirthDate(value: dayjs.Dayjs | null) {
     updateProfile('birth_date', value?.isValid() ? value.format('YYYY-MM-DD') : '')
+  }
+
+  function selectProfilePicture(event: ChangeEvent<HTMLInputElement>) {
+    setFile(event.target.files?.[0] ?? null)
+    event.target.value = ''
   }
 
   async function uploadAvatar(selectedFile: File) {
@@ -146,22 +166,34 @@ export function ProfilePage({
     }
   }
 
+  const avatarImageUrl = avatarPreviewUrl || profile.profile_picture_url
+
   return (
     <section className="page-band">
       <div className="page-inner narrow">
         <Paper component="section" className="profile-card" elevation={0}>
           <div className="profile-card-header">
-            <Avatar
-              alt={displayName}
-              className="profile-avatar"
-              src={profile.profile_picture_url || undefined}
-            >
-              {avatarInitials}
+            <Avatar alt={displayName} className="profile-avatar profile-avatar-chooser">
+              <Button
+                aria-label="Choose profile picture"
+                className="profile-avatar-button"
+                component="label"
+              >
+                {avatarImageUrl ? (
+                  <img className="profile-avatar-image" src={avatarImageUrl} alt="" />
+                ) : (
+                  <span className="profile-avatar-initials">{avatarInitials}</span>
+                )}
+                <span className="profile-avatar-backdrop" />
+                <span className="profile-avatar-mark">Edit</span>
+                <input hidden accept="image/*" type="file" onChange={selectProfilePicture} />
+              </Button>
             </Avatar>
             <div>
               <p className="eyebrow">Profile</p>
               <h1>{displayName}</h1>
               <p className="muted">{auth.user.email}</p>
+              {file && <p className="muted profile-avatar-selection">{file.name}</p>}
             </div>
           </div>
           {error && <Alert severity="error">{error}</Alert>}
@@ -187,15 +219,6 @@ export function ProfilePage({
                 onChange={updateBirthDate}
                 slotProps={{ textField: { fullWidth: true, size: 'small' } }}
               />
-            </div>
-            <div className="file-upload-row">
-              <TextField
-                label="Profile picture"
-                type="file"
-                onChange={(event) => setFile((event.target as HTMLInputElement).files?.[0] ?? null)}
-                slotProps={{ inputLabel: { shrink: true }, htmlInput: { accept: 'image/*' } }}
-              />
-              <span className="muted">{file?.name ?? 'No file selected'}</span>
             </div>
             <Divider className="profile-section-divider" textAlign="left">
               Social
