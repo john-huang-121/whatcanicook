@@ -5,17 +5,13 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from whatcanicook.services.uploads import ALLOWED_IMAGE_CONTENT_TYPES
+from whatcanicook.upload_serializers import ImageUploadRequestSerializer
+
 from .models import Profile
 from .storage_paths import profile_picture_prefix
 
 User = get_user_model()
-
-ALLOWED_AVATAR_CONTENT_TYPES = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/gif": ".gif",
-    "image/webp": ".webp",
-}
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -54,7 +50,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid profile picture key.")
 
         suffix = path.suffix.lower()
-        if suffix not in set(ALLOWED_AVATAR_CONTENT_TYPES.values()):
+        if suffix not in set(ALLOWED_IMAGE_CONTENT_TYPES.values()):
             raise serializers.ValidationError("Unsupported profile picture file type.")
 
         return value
@@ -78,26 +74,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
-class AvatarUploadRequestSerializer(serializers.Serializer):
-    filename = serializers.CharField(max_length=255)
-    content_type = serializers.CharField(max_length=100)
-    size = serializers.IntegerField(min_value=1)
-
-    def validate_content_type(self, value):
-        content_type = value.lower().strip()
-        if content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
-            raise serializers.ValidationError("Unsupported avatar image type.")
-        return content_type
-
-    def validate_size(self, value):
-        max_bytes = settings.AVATAR_UPLOAD_MAX_BYTES
-        if value > max_bytes:
-            raise serializers.ValidationError(f"Avatar image must be {max_bytes} bytes or smaller.")
-        return value
-
-    def validate(self, attrs):
-        attrs["extension"] = ALLOWED_AVATAR_CONTENT_TYPES[attrs["content_type"]]
-        return attrs
+class AvatarUploadRequestSerializer(ImageUploadRequestSerializer):
+    pass
 
 
 class UserSerializer(serializers.ModelSerializer):

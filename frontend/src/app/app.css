@@ -809,6 +809,19 @@ p {
   font-size: 1.15rem;
 }
 
+.recipe-hero-image.has-image {
+  display: block;
+  background: #111827;
+}
+
+.recipe-hero-image img {
+  display: block;
+  width: 100%;
+  min-height: 16rem;
+  max-height: 34rem;
+  object-fit: cover;
+}
+
 .detail-content,
 .form-shell,
 .auth-panel,
@@ -1812,6 +1825,9 @@ select:focus {
 
 .recipe-card-image img {
   aspect-ratio: 4 / 3;
+  display: block;
+  width: 100%;
+  object-fit: cover;
   transition: transform 220ms ease;
 }
 

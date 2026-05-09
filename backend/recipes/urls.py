@@ -9,5 +9,6 @@ urlpatterns = [
     path("units/", views.UnitListView.as_view(), name="unit-list"),
     path("ingredients/", views.IngredientListView.as_view(), name="ingredient-list"),
     path("recipes/", views.RecipeListView.as_view(), name="recipe-list"),
+    path("recipes/<int:recipe_id>/image-upload/", views.RecipeImageUploadView.as_view(), name="recipe-image-upload"),
     path("recipes/<int:recipe_id>/", views.RecipeDetailView.as_view(), name="recipe-detail"),
 ]

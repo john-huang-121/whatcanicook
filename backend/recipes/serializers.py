@@ -1,7 +1,11 @@
+from pathlib import PurePosixPath
+
+from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 
 from social.models import RecipeLike, SavedRecipe, UserFollow
+from whatcanicook.services.uploads import ALLOWED_IMAGE_CONTENT_TYPES
 
 from .models import (
     Cuisine,
@@ -16,6 +20,7 @@ from .models import (
     UserIngredientStatus,
     normalize_ingredient_name,
 )
+from .storage_paths import recipe_images_prefix
 
 
 class RecipeIngredientReadSerializer(serializers.ModelSerializer):
@@ -96,6 +101,8 @@ class RecipeSerializer(serializers.ModelSerializer):
     created_by = serializers.IntegerField(source="created_by_id", read_only=True)
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     cuisine_label = serializers.CharField(source="get_cuisine_display", read_only=True)
+    image_key = serializers.CharField(write_only=True, required=False)
+    image_url = serializers.SerializerMethodField()
     published_date = serializers.CharField(read_only=True)
     total_time = serializers.IntegerField(read_only=True)
     is_owner = serializers.SerializerMethodField()
@@ -116,6 +123,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "description",
+            "image",
+            "image_key",
+            "image_url",
             "prep_time",
             "cook_time",
             "servings",
@@ -144,6 +154,8 @@ class RecipeSerializer(serializers.ModelSerializer):
             "id",
             "created_by",
             "created_by_username",
+            "image",
+            "image_url",
             "is_owner",
             "like_count",
             "save_count",
@@ -160,6 +172,14 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_owner(self, obj):
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated and obj.created_by_id == request.user.id)
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return ""
+
+        request = self.context.get("request")
+        url = obj.image.url
+        return request.build_absolute_uri(url) if request else url
 
     def get_like_count(self, obj):
         like_count = getattr(obj, "like_count", None)
@@ -199,6 +219,27 @@ class RecipeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Choose a valid cuisine.")
         return value
 
+    def validate_image_key(self, value):
+        if not settings.USE_S3:
+            raise serializers.ValidationError("Presigned recipe image uploads require S3 storage.")
+
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            raise serializers.ValidationError("Unable to validate recipe image ownership.")
+        if self.instance is None:
+            raise serializers.ValidationError("Recipe image keys can only be attached to an existing recipe.")
+
+        path = PurePosixPath(value)
+        expected_prefix = f"{recipe_images_prefix(self.instance.created_by_id, self.instance.id)}/"
+        if path.is_absolute() or ".." in path.parts or not value.startswith(expected_prefix):
+            raise serializers.ValidationError("Invalid recipe image key.")
+
+        suffix = path.suffix.lower()
+        if suffix not in set(ALLOWED_IMAGE_CONTENT_TYPES.values()):
+            raise serializers.ValidationError("Unsupported recipe image file type.")
+
+        return value
+
     def validate(self, attrs):
         instruction_items = attrs.get("instruction_items")
         has_instruction_items = instruction_items is not None and any(
@@ -226,11 +267,15 @@ class RecipeSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         ingredient_items = validated_data.pop("ingredient_items", None)
         instruction_items = validated_data.pop("instruction_items", None)
+        image_key = validated_data.pop("image_key", None)
 
         with transaction.atomic():
             for field, value in validated_data.items():
                 setattr(instance, field, value)
             instance.save()
+            if image_key:
+                instance.image.name = image_key
+                instance.save(update_fields=["image"])
             if ingredient_items is not None:
                 self._replace_ingredients(instance, ingredient_items)
             if instruction_items is not None:

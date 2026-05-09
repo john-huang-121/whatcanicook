@@ -96,7 +96,9 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
   return (
     <section className="page-band">
       <div className="detail-shell">
-        <div className="recipe-hero-image">Recipe Image</div>
+        <div className={`recipe-hero-image ${recipe.image_url ? 'has-image' : ''}`}>
+          {recipe.image_url ? <img src={recipe.image_url} alt={recipe.title} /> : 'Recipe Image'}
+        </div>
         <div className="detail-content">
           <div className="detail-header">
             <div>

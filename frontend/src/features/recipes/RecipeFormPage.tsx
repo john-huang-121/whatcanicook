@@ -10,12 +10,14 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
+import { uploadToPresignedPost } from '../../lib/presignedUploads'
 import type {
   AuthState,
   Cuisine,
   Ingredient,
   Navigate,
   Recipe,
+  RecipeImageUploadSignature,
   RecipeIngredientInput,
   RecipeInstructionInput,
   RecipePayload,
@@ -112,7 +114,9 @@ export function RecipeFormPage({
   const [unitOptions, setUnitOptions] = useState<RecipeUnit[]>([])
   const [openIngredientIndex, setOpenIngredientIndex] = useState<number | null>(null)
   const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
   const editing = recipeId !== undefined
   const prepTimeInputId = `${recipeFormId}-prep-time`
   const cookTimeInputId = `${recipeFormId}-cook-time`
@@ -155,6 +159,7 @@ export function RecipeFormPage({
         const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
         if (!active) return
         setForm(recipeToForm(recipe))
+        setImageFile(null)
       } catch (requestError) {
         if (!active) return
         setError(formatErrors(requestError))
@@ -324,10 +329,11 @@ export function RecipeFormPage({
       }))
   }
 
-  function toPayload(ingredientItems: RecipePayload['ingredient_items']): RecipePayload {
+  function toPayload(ingredientItems: RecipePayload['ingredient_items'], imageKey?: string): RecipePayload {
     return {
       title: form.title,
       description: form.description,
+      ...(imageKey ? { image_key: imageKey } : {}),
       prep_time: form.prep_time ? Number(form.prep_time) : null,
       cook_time: Number(form.cook_time),
       servings: Number(form.servings),
@@ -342,19 +348,61 @@ export function RecipeFormPage({
     }
   }
 
+  async function uploadRecipeImage(selectedFile: File, targetRecipeId: number) {
+    const contentType = selectedFile.type || 'application/octet-stream'
+    const signature = await apiFetch<RecipeImageUploadSignature>(
+      `/api/recipes/${targetRecipeId}/image-upload/`,
+      {
+        method: 'POST',
+        body: {
+          filename: selectedFile.name,
+          content_type: contentType,
+          size: selectedFile.size,
+        },
+      },
+    )
+
+    await uploadToPresignedPost(signature, selectedFile, 'Recipe image')
+    return signature.recipe_image_key
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
     const ingredientItems = ingredientItemsForPayload()
+    setSaving(true)
 
     try {
-      const recipe = await apiFetch<Recipe>(editing ? `/api/recipes/${recipeId}/` : '/api/recipes/', {
-        method: editing ? 'PATCH' : 'POST',
+      if (editing && recipeId) {
+        const imageKey = imageFile ? await uploadRecipeImage(imageFile, recipeId) : undefined
+        const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`, {
+          method: 'PATCH',
+          body: toPayload(ingredientItems, imageKey),
+        })
+        navigate(`/recipes/${recipe.id}`)
+        return
+      }
+
+      const recipe = await apiFetch<Recipe>('/api/recipes/', {
+        method: 'POST',
         body: toPayload(ingredientItems),
       })
+
+      if (imageFile) {
+        const imageKey = await uploadRecipeImage(imageFile, recipe.id)
+        const recipeWithImage = await apiFetch<Recipe>(`/api/recipes/${recipe.id}/`, {
+          method: 'PATCH',
+          body: { image_key: imageKey },
+        })
+        navigate(`/recipes/${recipeWithImage.id}`)
+        return
+      }
+
       navigate(`/recipes/${recipe.id}`)
     } catch (requestError) {
       setError(formatErrors(requestError))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -377,6 +425,15 @@ export function RecipeFormPage({
             multiline
             minRows={4}
           />
+          <div className="file-upload-row">
+            <TextField
+              label="Recipe image"
+              type="file"
+              onChange={(event) => setImageFile((event.target as HTMLInputElement).files?.[0] ?? null)}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { accept: 'image/*' } }}
+            />
+            <span className="muted">{imageFile?.name ?? 'No image selected'}</span>
+          </div>
           <div className="form-grid">
             <div className="form-field">
               <label htmlFor={prepTimeInputId}>Prep Time</label>
@@ -609,8 +666,8 @@ export function RecipeFormPage({
           </section>
 
           <div className="action-row">
-            <Button type="submit" className="primary-button" variant="contained">
-              {editing ? 'Save Changes' : 'Create Recipe'}
+            <Button type="submit" className="primary-button" variant="contained" disabled={saving}>
+              {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Recipe'}
             </Button>
             {editing && recipeId && (
               <Button type="button" className="text-button" variant="text" onClick={() => navigate(`/recipes/${recipeId}`)}>

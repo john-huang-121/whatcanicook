@@ -22,13 +22,20 @@ export type ProfileUpdatePayload = {
   profile_picture_key?: string
 }
 
-export type AvatarUploadSignature = {
+export type PresignedUploadSignature = {
   upload_url: string
   fields: Record<string, string>
-  profile_picture_key: string
   object_key: string
   expires_in: number
   max_bytes: number
+}
+
+export type AvatarUploadSignature = PresignedUploadSignature & {
+  profile_picture_key: string
+}
+
+export type RecipeImageUploadSignature = PresignedUploadSignature & {
+  recipe_image_key: string
 }
 
 export type User = {
@@ -140,6 +147,8 @@ export type Recipe = {
   id: number
   title: string
   description: string
+  image: string | null
+  image_url: string
   prep_time: number | null
   cook_time: number
   servings: number
@@ -166,6 +175,7 @@ export type Recipe = {
 export type RecipePayload = {
   title: string
   description: string
+  image_key?: string
   prep_time: number | null
   cook_time: number
   servings: number

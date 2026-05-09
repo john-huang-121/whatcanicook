@@ -12,6 +12,7 @@ import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
 import { ApiError, apiFetch } from '../../lib/api'
+import { uploadToPresignedPost } from '../../lib/presignedUploads'
 import type {
   AuthState,
   AvatarUploadSignature,
@@ -95,23 +96,7 @@ export function ProfilePage({
       },
     })
 
-    const uploadBody = new FormData()
-    Object.entries(signature.fields).forEach(([key, value]) => {
-      uploadBody.append(key, value)
-    })
-    uploadBody.append('file', selectedFile)
-
-    const response = await fetch(signature.upload_url, {
-      method: 'POST',
-      body: uploadBody,
-    })
-
-    if (!response.ok) {
-      throw new Error(
-        `Avatar upload failed with status ${response.status}. Check S3 CORS and upload permissions.`,
-      )
-    }
-
+    await uploadToPresignedPost(signature, selectedFile, 'Avatar')
     return signature.profile_picture_key
   }
 

@@ -170,7 +170,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 USE_S3 = env.bool("USE_S3", default=False)
-AVATAR_UPLOAD_MAX_BYTES = env.int("AVATAR_UPLOAD_MAX_BYTES", default=5 * 1024 * 1024)
+AVATAR_UPLOAD_MAX_BYTES = env.int("AVATAR_UPLOAD_MAX_BYTES", default=10 * 1024 * 1024)
+RECIPE_IMAGE_UPLOAD_MAX_BYTES = env.int("RECIPE_IMAGE_UPLOAD_MAX_BYTES", default=25 * 1024 * 1024)
 S3_PRESIGNED_UPLOAD_EXPIRES = env.int("S3_PRESIGNED_UPLOAD_EXPIRES", default=300)
 
 # Profile.profile_picture uses Django's default storage, so USE_S3=True stores
@@ -181,7 +182,6 @@ if USE_S3:
         raise ImproperlyConfigured("USE_S3=True requires AWS_STORAGE_BUCKET_NAME to be set.")
 
     AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="").strip() or None
-    AWS_LOCATION = env("AWS_LOCATION", default="").strip("/")
 
     S3_STORAGE_OPTIONS = {
         "bucket_name": AWS_STORAGE_BUCKET_NAME,
@@ -191,8 +191,6 @@ if USE_S3:
 
     if AWS_S3_REGION_NAME:
         S3_STORAGE_OPTIONS["region_name"] = AWS_S3_REGION_NAME
-    if AWS_LOCATION:
-        S3_STORAGE_OPTIONS["location"] = AWS_LOCATION
 
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",

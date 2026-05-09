@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from .storage_paths import recipe_image_upload_to
+
 
 def normalize_ingredient_name(value):
     return " ".join(value.strip().lower().split())
@@ -89,6 +91,7 @@ class Unit(models.TextChoices):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    image = models.ImageField(upload_to=recipe_image_upload_to, blank=True)
     prep_time = models.PositiveIntegerField(
         help_text="Time in minutes",
         blank=True,

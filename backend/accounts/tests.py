@@ -216,17 +216,17 @@ class ProfileApiTests(TestCase):
         USE_S3=True,
         AWS_STORAGE_BUCKET_NAME="test-bucket",
         AWS_S3_REGION_NAME="us-west-1",
-        S3_STORAGE_OPTIONS={"location": "media"},
+        S3_STORAGE_OPTIONS={},
         AVATAR_UPLOAD_MAX_BYTES=1024,
         S3_PRESIGNED_UPLOAD_EXPIRES=300,
     )
-    @patch("accounts.views.boto3.client")
+    @patch("whatcanicook.services.uploads.boto3.client")
     def test_user_can_request_presigned_avatar_upload(self, client_factory):
         self.client.login(username="jane", password="testpass123")
         s3_client = Mock()
         s3_client.generate_presigned_post.return_value = {
             "url": "https://s3.example.test/",
-            "fields": {"key": "media/users/user_1/profile_pictures/avatar.png"},
+            "fields": {"key": "users/user_1/profile_pictures/avatar.png"},
         }
         client_factory.return_value = s3_client
 
@@ -247,7 +247,7 @@ class ProfileApiTests(TestCase):
             data["profile_picture_key"].startswith(f"users/user_{self.user.id}/profile_pictures/")
         )
         self.assertTrue(
-            data["object_key"].startswith(f"media/users/user_{self.user.id}/profile_pictures/")
+            data["object_key"].startswith(f"users/user_{self.user.id}/profile_pictures/")
         )
         s3_client.generate_presigned_post.assert_called_once()
 
