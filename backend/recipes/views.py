@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from whatcanicook.services.uploads import S3UploadService, UploadServiceError
 from whatcanicook.upload_serializers import ImageUploadRequestSerializer
 
-from .models import Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
+from .models import MAX_RECIPE_IMAGES, Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
 from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer, UnitSerializer
 from .storage_paths import recipe_image_storage_name
 
@@ -21,6 +21,7 @@ def visible_recipes_for(user):
             "recipe_ingredients__ingredient",
             "recipe_ingredients__user_ingredient",
             "recipe_instructions__instruction",
+            "recipe_images",
         )
         .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
@@ -167,6 +168,7 @@ class RecipeDetailView(APIView):
                 "recipe_ingredients__ingredient",
                 "recipe_ingredients__user_ingredient",
                 "recipe_instructions__instruction",
+                "recipe_images",
             ),
             pk=recipe_id,
         )
@@ -242,6 +244,15 @@ class RecipeImageUploadView(APIView):
             context={"max_bytes": settings.RECIPE_IMAGE_UPLOAD_MAX_BYTES},
         )
         serializer.is_valid(raise_exception=True)
+        try:
+            position = int(request.data.get("position", 0))
+        except (TypeError, ValueError):
+            return Response({"position": ["Enter a whole number."]}, status=status.HTTP_400_BAD_REQUEST)
+        if position < 0 or position >= MAX_RECIPE_IMAGES:
+            return Response(
+                {"position": [f"Recipe image position must be between 0 and {MAX_RECIPE_IMAGES - 1}."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         file_key = recipe_image_storage_name(
             recipe.created_by_id,
@@ -261,4 +272,6 @@ class RecipeImageUploadView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        return Response(upload.as_response_data("recipe_image_key"))
+        response_data = upload.as_response_data("recipe_image_key")
+        response_data["position"] = position
+        return Response(response_data)

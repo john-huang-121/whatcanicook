@@ -36,6 +36,7 @@ export type AvatarUploadSignature = PresignedUploadSignature & {
 
 export type RecipeImageUploadSignature = PresignedUploadSignature & {
   recipe_image_key: string
+  position: number
 }
 
 export type User = {
@@ -148,7 +149,9 @@ export type Recipe = {
   title: string
   description: string
   image: string | null
+  image_storage_key: string
   image_url: string
+  images: RecipeImage[]
   prep_time: number | null
   cook_time: number
   servings: number
@@ -176,6 +179,7 @@ export type RecipePayload = {
   title: string
   description: string
   image_key?: string
+  image_items?: RecipeImageInput[]
   prep_time: number | null
   cook_time: number
   servings: number
@@ -192,6 +196,19 @@ export type RecipePayload = {
     unit: RecipeUnitValue
     note: string
   }>
+}
+
+export type RecipeImage = {
+  id: number
+  position: number
+  image: string
+  image_key: string
+  image_url: string
+}
+
+export type RecipeImageInput = {
+  position: number
+  image_key: string
 }
 
 export type FollowResponse = {

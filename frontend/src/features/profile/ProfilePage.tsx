@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Avatar from '@mui/material/Avatar'
@@ -34,9 +34,9 @@ export function ProfilePage({
 }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const avatarPreviewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
 
   useEffect(() => {
     if (!auth.authenticated) return
@@ -58,18 +58,10 @@ export function ProfilePage({
   }, [auth.authenticated])
 
   useEffect(() => {
-    if (!file) {
-      setAvatarPreviewUrl('')
-      return
-    }
-
-    const previewUrl = URL.createObjectURL(file)
-    setAvatarPreviewUrl(previewUrl)
-
     return () => {
-      URL.revokeObjectURL(previewUrl)
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl)
     }
-  }, [file])
+  }, [avatarPreviewUrl])
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />

@@ -12,6 +12,7 @@ from ..models import (
     Instruction,
     Recipe,
     RecipeIngredient,
+    RecipeImage,
     RecipeInstruction,
     Unit,
     UserIngredient,
@@ -95,6 +96,16 @@ class RecipeModelTests(TestCase):
         self.assertEqual(
             field.upload_to(self.recipe1, "cover.png"),
             f"{recipe_images_prefix(self.owner.id, self.recipe1.id)}/cover.png",
+        )
+
+    def test_recipe_gallery_image_uploads_use_default_storage(self):
+        field = RecipeImage._meta.get_field("image")
+        recipe_image = RecipeImage(recipe=self.recipe1, position=1)
+
+        self.assertIs(field.storage, default_storage)
+        self.assertEqual(
+            field.upload_to(recipe_image, "gallery.png"),
+            f"{recipe_images_prefix(self.owner.id, self.recipe1.id)}/gallery.png",
         )
 
     def test_ingredient_str(self):

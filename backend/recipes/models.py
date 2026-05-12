@@ -3,7 +3,9 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from .storage_paths import recipe_image_upload_to
+from .storage_paths import recipe_gallery_image_upload_to, recipe_image_upload_to
+
+MAX_RECIPE_IMAGES = 5
 
 
 def normalize_ingredient_name(value):
@@ -142,6 +144,31 @@ class Recipe(models.Model):
 
     def can_edit(self, user):
         return user.is_authenticated and self.created_by_id == user.id
+
+
+class RecipeImage(models.Model):
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="recipe_images")
+    image = models.ImageField(upload_to=recipe_gallery_image_upload_to)
+    position = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["recipe", "position"], name="unique_recipe_image_position"),
+            models.CheckConstraint(
+                condition=Q(position__gte=0, position__lt=MAX_RECIPE_IMAGES),
+                name="recipe_image_position_in_range",
+            ),
+        ]
+
+    @property
+    def is_hero(self):
+        return self.position == 0
+
+    def __str__(self):
+        return f"{self.recipe} image {self.position + 1}"
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=255, unique=True)

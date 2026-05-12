@@ -14,3 +14,9 @@ def recipe_image_storage_name(user_id, recipe_id, extension):
 def recipe_image_upload_to(instance, filename):
     recipe_id = instance.id or "unsaved"
     return f"{recipe_images_prefix(instance.created_by_id, recipe_id)}/{clean_filename(filename)}"
+
+
+def recipe_gallery_image_upload_to(instance, filename):
+    recipe = instance.recipe
+    recipe_id = recipe.id or "unsaved"
+    return f"{recipe_images_prefix(recipe.created_by_id, recipe_id)}/{clean_filename(filename)}"
