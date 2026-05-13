@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import LocalDiningIcon from '@mui/icons-material/LocalDining'
+import RestaurantIcon from '@mui/icons-material/Restaurant'
+import WhatshotIcon from '@mui/icons-material/Whatshot'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import Paper from '@mui/material/Paper'
+import { ImageCarousel } from '../../components/ImageCarousel'
 import { LoadingPage } from '../../components/LoadingPage'
 import { MessagePage } from '../../components/MessagePage'
-import { RecipeFact } from './components/RecipeFact'
 import { apiFetch } from '../../lib/api'
 import type { AuthState, FollowResponse, Navigate, Recipe } from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
@@ -36,6 +41,22 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
       active = false
     }
   }, [recipeId, auth.authenticated])
+
+  const recipeImages = useMemo(() => {
+    if (!recipe) return []
+
+    const uploadedImages = recipe.images
+      .slice()
+      .sort((firstImage, secondImage) => firstImage.position - secondImage.position)
+      .map((image, index) => ({
+        alt: `${recipe.title} image ${index + 1}`,
+        url: image.image_url,
+      }))
+      .filter((image) => image.url)
+
+    if (uploadedImages.length) return uploadedImages.slice(0, 5)
+    return recipe.image_url ? [{ alt: recipe.title, url: recipe.image_url }] : []
+  }, [recipe])
 
   if (error) return <MessagePage title="Recipe unavailable" message={error} navigate={navigate} />
   if (!recipe) return <LoadingPage message="Loading recipe..." />
@@ -93,25 +114,60 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
     }
   }
 
+  const cuisineLabel = recipe.cuisine_label || titleize(recipe.cuisine)
+  const recipeFacts = [
+    {
+      icon: <AccessTimeIcon aria-hidden="true" />,
+      label: 'Total Time',
+      value: `${recipe.total_time} Minutes`,
+    },
+    {
+      icon: <RestaurantIcon aria-hidden="true" />,
+      label: 'Servings',
+      value: `${recipe.servings} ${recipe.servings === 1 ? 'Person' : 'People'}`,
+    },
+    {
+      icon: <WhatshotIcon aria-hidden="true" />,
+      label: 'Cook Time',
+      value: `${recipe.cook_time} Minutes`,
+    },
+    {
+      icon: <LocalDiningIcon aria-hidden="true" />,
+      label: 'Cuisine',
+      value: cuisineLabel,
+    },
+  ]
+
   return (
-    <section className="page-band">
-      <div className="detail-shell">
-        <div className={`recipe-hero-image ${recipe.image_url ? 'has-image' : ''}`}>
-          {recipe.image_url ? <img src={recipe.image_url} alt={recipe.title} /> : 'Recipe Image'}
-        </div>
-        <div className="detail-content">
-          <div className="detail-header">
-            <div>
-              <h1>{recipe.title}</h1>
-              <p>
-                By {recipe.created_by_username} on {recipe.published_date}
-              </p>
-              <p className="muted">{recipe.author_follower_count} followers</p>
+    <section className="page-band recipe-detail-page">
+      <div className="detail-shell recipe-detail-shell">
+        <ImageCarousel
+          ariaLabel="Recipe image carousel"
+          className="recipe-detail-carousel"
+          emptyLabel="Recipe Image"
+          images={recipeImages}
+          maxFloatingImages={5}
+        />
+
+        <div className="detail-content recipe-detail-content">
+          <header className="recipe-detail-heading">
+            <div className="recipe-detail-tags">
+              <Chip className="recipe-detail-tag seasonal" label={cuisineLabel} size="small" />
+              <Chip
+                className="recipe-detail-tag heritage"
+                label={recipe.is_public ? 'Public Recipe' : 'Private Recipe'}
+                size="small"
+              />
             </div>
-            <div className="status-stack">
-              <Chip color={recipe.is_public ? 'success' : 'error'} label={recipe.is_public ? 'Public' : 'Private'} />
+            <div className="recipe-detail-title-row">
+              <div>
+                <h1>{recipe.title}</h1>
+                <p className="recipe-detail-byline">
+                  By {recipe.created_by_username} on {recipe.published_date} / {recipe.author_follower_count} followers
+                </p>
+              </div>
               {recipe.is_owner && (
-                <div className="mini-actions">
+                <div className="mini-actions recipe-owner-actions">
                   <Button type="button" variant="text" onClick={() => navigate(`/recipes/${recipe.id}/edit`)}>
                     Edit
                   </Button>
@@ -126,9 +182,21 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
                 </div>
               )}
             </div>
-          </div>
+          </header>
 
-          <div className="social-actions">
+          <section className="recipe-detail-facts" aria-label="Recipe facts">
+            {recipeFacts.map((fact) => (
+              <Paper className="recipe-detail-fact" elevation={0} key={fact.label}>
+                {fact.icon}
+                <div>
+                  <h3>{fact.label}</h3>
+                  <p>{fact.value}</p>
+                </div>
+              </Paper>
+            ))}
+          </section>
+
+          <div className="social-actions recipe-detail-actions">
             {recipe.is_public && !recipe.is_owner && (
               <Button
                 type="button"
@@ -167,46 +235,47 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
             </Alert>
           )}
 
-          {recipe.description && <p className="lead">{recipe.description}</p>}
+          <div className="recipe-detail-body-grid">
+            <div className="recipe-detail-main-column">
+              <Paper className="recipe-story-card" elevation={0}>
+                <h2>The Story Behind the Dish</h2>
+                <p>{recipe.description || 'No story has been added for this recipe yet.'}</p>
+              </Paper>
 
-          <div className="recipe-facts-grid">
-            <RecipeFact label="Prep Time" value={recipe.prep_time ? `${recipe.prep_time} minutes` : 'Not listed'} />
-            <RecipeFact label="Cook Time" value={`${recipe.cook_time} minutes`} />
-            <RecipeFact label="Servings" value={String(recipe.servings)} />
-            <RecipeFact label="Cuisine" value={recipe.cuisine_label || titleize(recipe.cuisine)} />
+              <section className="content-section recipe-instructions-section">
+                <h2>Instructions</h2>
+                {recipe.instructions.length ? (
+                  <ol className="instruction-list recipe-detail-instructions">
+                    {recipe.instructions.map((item) => (
+                      <li key={item.id}>
+                        <span className="recipe-instruction-number">{item.step_number}</span>
+                        <p>{item.text}</p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="muted">No instructions listed yet.</p>
+                )}
+              </section>
+            </div>
+
+            <Paper className="recipe-ingredients-card" component="aside" elevation={0}>
+              <h2>Ingredients</h2>
+              {recipe.ingredients.length ? (
+                <ul className="ingredient-list recipe-detail-ingredients">
+                  {recipe.ingredients.map((item) => (
+                    <li key={item.id}>
+                      <span>{`${item.quantity} ${[item.unit_label, item.name].filter(Boolean).join(' ')}`}</span>
+                      {item.note && <small>{item.note}</small>}
+                      {item.review_status === 'under_review' && <small>Under review</small>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted">No ingredients listed yet.</p>
+              )}
+            </Paper>
           </div>
-
-          <section className="content-section">
-            <h2>Ingredients</h2>
-            {recipe.ingredients.length ? (
-              <ul className="ingredient-list">
-                {recipe.ingredients.map((item) => (
-                  <li key={item.id}>
-                    {`${item.quantity} ${[item.unit_label, item.name].filter(Boolean).join(' ')}`}
-                    {item.note && <span className="muted"> ({item.note})</span>}
-                    {item.review_status === 'under_review' && (
-                      <span className="ingredient-review-status"> - Under review</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="muted">No ingredients listed yet.</p>
-            )}
-          </section>
-
-          <section className="content-section">
-            <h2>Instructions</h2>
-            {recipe.instructions.length ? (
-              <ol className="instruction-list">
-                {recipe.instructions.map((item) => (
-                  <li key={item.id}>{item.text}</li>
-                ))}
-              </ol>
-            ) : (
-              <p className="muted">No instructions listed yet.</p>
-            )}
-          </section>
         </div>
       </div>
     </section>

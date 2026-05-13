@@ -82,3 +82,7 @@ https://docs.djangoproject.com/en/5.2/internals/contributing/writing-documentati
 
 flip book style for recipes?
 http://www.turnjs.com/#samples/magazine1/8
+
+## Stock Photos
+
+<a href="https://www.vecteezy.com/free-photos/food">Food Stock photos by Vecteezy</a>
