@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Avatar from '@mui/material/Avatar'
 import Button from '@mui/material/Button'
@@ -11,8 +11,16 @@ import dayjs from 'dayjs'
 import { LoadingPage } from '../../components/LoadingPage'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { MessagePage } from '../../components/MessagePage'
-import { apiFetch } from '../../lib/api'
-import type { AuthState, Navigate, Profile, SetAuth } from '../../types'
+import { ApiError, apiFetch } from '../../lib/api'
+import { uploadToPresignedPost } from '../../lib/presignedUploads'
+import type {
+  AuthState,
+  AvatarUploadSignature,
+  Navigate,
+  Profile,
+  ProfileUpdatePayload,
+  SetAuth,
+} from '../../types'
 import { formatErrors } from '../../utils/formatErrors'
 
 export function ProfilePage({
@@ -27,6 +35,8 @@ export function ProfilePage({
   const [profile, setProfile] = useState<Profile | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const avatarPreviewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
 
   useEffect(() => {
     if (!auth.authenticated) return
@@ -46,6 +56,12 @@ export function ProfilePage({
       active = false
     }
   }, [auth.authenticated])
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl)
+    }
+  }, [avatarPreviewUrl])
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
@@ -76,21 +92,54 @@ export function ProfilePage({
     updateProfile('birth_date', value?.isValid() ? value.format('YYYY-MM-DD') : '')
   }
 
+  function selectProfilePicture(event: ChangeEvent<HTMLInputElement>) {
+    setFile(event.target.files?.[0] ?? null)
+    event.target.value = ''
+  }
+
+  async function uploadAvatar(selectedFile: File) {
+    const contentType = selectedFile.type || 'application/octet-stream'
+    const signature = await apiFetch<AvatarUploadSignature>('/api/auth/profile/avatar-upload/', {
+      method: 'POST',
+      body: {
+        filename: selectedFile.name,
+        content_type: contentType,
+        size: selectedFile.size,
+      },
+    })
+
+    await uploadToPresignedPost(signature, selectedFile, 'Avatar')
+    return signature.profile_picture_key
+  }
+
+  function formatProfileError(requestError: unknown) {
+    if (requestError instanceof ApiError) {
+      return formatErrors(requestError)
+    }
+    if (requestError instanceof Error) {
+      return requestError.message
+    }
+    return formatErrors(requestError)
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
-
-    const body = new FormData()
-    body.set('first_name', profile.first_name)
-    body.set('last_name', profile.last_name)
-    body.set('twitter_x_url', profile.twitter_x_url)
-    body.set('instagram_url', profile.instagram_url)
-    body.set('facebook_url', profile.facebook_url)
-    body.set('linkedin_url', profile.linkedin_url)
-    if (profile.birth_date) body.set('birth_date', profile.birth_date)
-    if (file) body.set('profile_picture', file)
+    setSaving(true)
 
     try {
+      const profilePictureKey = file ? await uploadAvatar(file) : undefined
+      const body: ProfileUpdatePayload = {
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        twitter_x_url: profile.twitter_x_url,
+        instagram_url: profile.instagram_url,
+        facebook_url: profile.facebook_url,
+        linkedin_url: profile.linkedin_url,
+        birth_date: profile.birth_date || null,
+        ...(profilePictureKey ? { profile_picture_key: profilePictureKey } : {}),
+      }
+
       const updatedProfile = await apiFetch<Profile>('/api/auth/profile/', {
         method: 'PATCH',
         body,
@@ -101,27 +150,42 @@ export function ProfilePage({
         authenticated: true,
         user: { ...auth.user, profile: updatedProfile },
       })
+      setFile(null)
     } catch (requestError) {
-      setError(formatErrors(requestError))
+      setError(formatProfileError(requestError))
+    } finally {
+      setSaving(false)
     }
   }
+
+  const avatarImageUrl = avatarPreviewUrl || profile.profile_picture_url
 
   return (
     <section className="page-band">
       <div className="page-inner narrow">
         <Paper component="section" className="profile-card" elevation={0}>
           <div className="profile-card-header">
-            <Avatar
-              alt={displayName}
-              className="profile-avatar"
-              src={profile.profile_picture_url || undefined}
-            >
-              {avatarInitials}
+            <Avatar alt={displayName} className="profile-avatar profile-avatar-chooser">
+              <Button
+                aria-label="Choose profile picture"
+                className="profile-avatar-button"
+                component="label"
+              >
+                {avatarImageUrl ? (
+                  <img className="profile-avatar-image" src={avatarImageUrl} alt="" />
+                ) : (
+                  <span className="profile-avatar-initials">{avatarInitials}</span>
+                )}
+                <span className="profile-avatar-backdrop" />
+                <span className="profile-avatar-mark">Edit</span>
+                <input hidden accept="image/*" type="file" onChange={selectProfilePicture} />
+              </Button>
             </Avatar>
             <div>
               <p className="eyebrow">Profile</p>
               <h1>{displayName}</h1>
               <p className="muted">{auth.user.email}</p>
+              {file && <p className="muted profile-avatar-selection">{file.name}</p>}
             </div>
           </div>
           {error && <Alert severity="error">{error}</Alert>}
@@ -148,15 +212,6 @@ export function ProfilePage({
                 slotProps={{ textField: { fullWidth: true, size: 'small' } }}
               />
             </div>
-            <div className="file-upload-row">
-              <TextField
-                label="Profile picture"
-                type="file"
-                onChange={(event) => setFile((event.target as HTMLInputElement).files?.[0] ?? null)}
-                slotProps={{ inputLabel: { shrink: true }, htmlInput: { accept: 'image/*' } }}
-              />
-              <span className="muted">{file?.name ?? 'No file selected'}</span>
-            </div>
             <Divider className="profile-section-divider" textAlign="left">
               Social
             </Divider>
@@ -182,8 +237,8 @@ export function ProfilePage({
                 onChange={(event) => updateProfile('linkedin_url', event.target.value)}
               />
             </div>
-            <Button type="submit" className="primary-button" variant="contained">
-              Save Profile
+            <Button type="submit" className="primary-button" variant="contained" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Profile'}
             </Button>
           </form>
         </Paper>

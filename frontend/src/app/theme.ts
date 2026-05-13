@@ -3,14 +3,14 @@ import { createTheme } from '@mui/material/styles'
 export const appTheme = createTheme({
   palette: {
     primary: {
-      main: '#d95f32',
-      dark: '#a84625',
-      contrastText: '#fffaf0',
+      main: '#a83820',
+      dark: '#842413',
+      contrastText: '#fff7ed',
     },
     secondary: {
-      main: '#687a3d',
-      dark: '#3f6212',
-      contrastText: '#fffaf0',
+      main: '#718032',
+      dark: '#4d5b1e',
+      contrastText: '#fff7ed',
     },
     success: {
       main: '#3f6212',
@@ -25,20 +25,32 @@ export const appTheme = createTheme({
       dark: '#78350f',
     },
     background: {
-      default: '#fff7ed',
-      paper: '#fffaf0',
+      default: '#f8efe8',
+      paper: '#fffaf4',
     },
     text: {
-      primary: '#33251b',
-      secondary: '#725e4a',
+      primary: '#3b261d',
+      secondary: '#755f4e',
     },
   },
   shape: {
-    borderRadius: 16,
+    borderRadius: 10,
   },
   typography: {
     fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      '"Trebuchet MS", "Gill Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif',
+    h1: {
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontWeight: 700,
+    },
+    h2: {
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontWeight: 700,
+    },
+    h3: {
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontWeight: 700,
+    },
     button: {
       fontWeight: 800,
       letterSpacing: 0,
@@ -60,7 +72,7 @@ export const appTheme = createTheme({
       },
       styleOverrides: {
         root: {
-          borderRadius: '0.75rem',
+          borderRadius: '0.35rem',
           minHeight: '2.55rem',
         },
       },
@@ -77,11 +89,11 @@ export const appTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '0.35rem',
-          backgroundColor: '#fffdf8',
+          backgroundColor: '#fffaf4',
         },
         notchedOutline: {
           borderRadius: '0.35rem',
-          borderColor: '#f4c98f',
+          borderColor: '#e8d3c3',
         },
       },
     },

@@ -11,6 +11,34 @@ export type Profile = {
   birth_date: string | null
 }
 
+export type ProfileUpdatePayload = {
+  first_name: string
+  last_name: string
+  twitter_x_url: string
+  instagram_url: string
+  facebook_url: string
+  linkedin_url: string
+  birth_date: string | null
+  profile_picture_key?: string
+}
+
+export type PresignedUploadSignature = {
+  upload_url: string
+  fields: Record<string, string>
+  object_key: string
+  expires_in: number
+  max_bytes: number
+}
+
+export type AvatarUploadSignature = PresignedUploadSignature & {
+  profile_picture_key: string
+}
+
+export type RecipeImageUploadSignature = PresignedUploadSignature & {
+  recipe_image_key: string
+  position: number
+}
+
 export type User = {
   id: number
   username: string
@@ -120,6 +148,10 @@ export type Recipe = {
   id: number
   title: string
   description: string
+  image: string | null
+  image_storage_key: string
+  image_url: string
+  images: RecipeImage[]
   prep_time: number | null
   cook_time: number
   servings: number
@@ -146,6 +178,8 @@ export type Recipe = {
 export type RecipePayload = {
   title: string
   description: string
+  image_key?: string
+  image_items?: RecipeImageInput[]
   prep_time: number | null
   cook_time: number
   servings: number
@@ -162,6 +196,19 @@ export type RecipePayload = {
     unit: RecipeUnitValue
     note: string
   }>
+}
+
+export type RecipeImage = {
+  id: number
+  position: number
+  image: string
+  image_key: string
+  image_url: string
+}
+
+export type RecipeImageInput = {
+  position: number
+  image_key: string
 }
 
 export type FollowResponse = {

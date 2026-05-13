@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from django.utils.decorators import method_decorator
@@ -7,8 +8,17 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from whatcanicook.services.uploads import S3UploadService, UploadServiceError
+
 from .models import Profile
-from .serializers import LoginSerializer, ProfileSerializer, SignupSerializer, UserSerializer
+from .serializers import (
+    AvatarUploadRequestSerializer,
+    LoginSerializer,
+    ProfileSerializer,
+    SignupSerializer,
+    UserSerializer,
+)
+from .storage_paths import profile_picture_storage_name
 
 
 class CsrfTokenView(APIView):
@@ -90,3 +100,40 @@ class ProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class AvatarUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if not settings.USE_S3:
+            return Response(
+                {"detail": "S3 avatar uploads are not configured."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = AvatarUploadRequestSerializer(
+            data=request.data,
+            context={"max_bytes": settings.AVATAR_UPLOAD_MAX_BYTES},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        content_type = serializer.validated_data["content_type"]
+        file_key = profile_picture_storage_name(
+            request.user.id,
+            serializer.validated_data["extension"],
+        )
+
+        try:
+            upload = S3UploadService().create_presigned_image_upload(
+                file_key=file_key,
+                content_type=content_type,
+                max_bytes=settings.AVATAR_UPLOAD_MAX_BYTES,
+            )
+        except UploadServiceError:
+            return Response(
+                {"detail": "Unable to prepare avatar upload."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(upload.as_response_data("profile_picture_key"))

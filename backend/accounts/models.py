@@ -5,6 +5,8 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from .storage_paths import profile_picture_upload_to
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     username_validator = UnicodeUsernameValidator()
@@ -60,7 +62,7 @@ class Profile(models.Model):
     )
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
-    profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True)
+    profile_picture = models.ImageField(upload_to=profile_picture_upload_to, blank=True)
     twitter_x_url = models.URLField("Twitter/X URL", blank=True)
     instagram_url = models.URLField(blank=True)
     facebook_url = models.URLField(blank=True)

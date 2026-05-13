@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from django.core.management import call_command
+from django.core.files.storage import default_storage
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
@@ -11,11 +12,13 @@ from ..models import (
     Instruction,
     Recipe,
     RecipeIngredient,
+    RecipeImage,
     RecipeInstruction,
     Unit,
     UserIngredient,
     UserIngredientStatus,
 )
+from ..storage_paths import recipe_images_prefix
 
 User = get_user_model()
 
@@ -85,6 +88,25 @@ class RecipeModelTests(TestCase):
     def test_recipe_str(self):
         self.assertEqual(str(self.recipe1), "Scrambled Eggs")
         self.assertEqual(str(self.recipe2), "Salted Pasta")
+
+    def test_recipe_image_uploads_use_default_storage(self):
+        field = Recipe._meta.get_field("image")
+
+        self.assertIs(field.storage, default_storage)
+        self.assertEqual(
+            field.upload_to(self.recipe1, "cover.png"),
+            f"{recipe_images_prefix(self.owner.id, self.recipe1.id)}/cover.png",
+        )
+
+    def test_recipe_gallery_image_uploads_use_default_storage(self):
+        field = RecipeImage._meta.get_field("image")
+        recipe_image = RecipeImage(recipe=self.recipe1, position=1)
+
+        self.assertIs(field.storage, default_storage)
+        self.assertEqual(
+            field.upload_to(recipe_image, "gallery.png"),
+            f"{recipe_images_prefix(self.owner.id, self.recipe1.id)}/gallery.png",
+        )
 
     def test_ingredient_str(self):
         self.assertEqual(str(self.salt), "Salt")

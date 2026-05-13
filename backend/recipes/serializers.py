@@ -1,7 +1,11 @@
+from pathlib import PurePosixPath
+
+from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 
 from social.models import RecipeLike, SavedRecipe, UserFollow
+from whatcanicook.services.uploads import ALLOWED_IMAGE_CONTENT_TYPES
 
 from .models import (
     Cuisine,
@@ -10,12 +14,37 @@ from .models import (
     Instruction,
     Recipe,
     RecipeIngredient,
+    RecipeImage,
     RecipeInstruction,
     Unit,
     UserIngredient,
     UserIngredientStatus,
     normalize_ingredient_name,
 )
+from .storage_paths import recipe_images_prefix
+
+
+class RecipeImageSerializer(serializers.ModelSerializer):
+    image_key = serializers.CharField(source="image.name", read_only=True)
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecipeImage
+        fields = ["id", "position", "image", "image_key", "image_url"]
+        read_only_fields = ["id", "position", "image", "image_key", "image_url"]
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return ""
+
+        request = self.context.get("request")
+        url = obj.image.url
+        return request.build_absolute_uri(url) if request else url
+
+
+class RecipeImageWriteSerializer(serializers.Serializer):
+    position = serializers.IntegerField(min_value=0, max_value=4)
+    image_key = serializers.CharField()
 
 
 class RecipeIngredientReadSerializer(serializers.ModelSerializer):
@@ -96,6 +125,11 @@ class RecipeSerializer(serializers.ModelSerializer):
     created_by = serializers.IntegerField(source="created_by_id", read_only=True)
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     cuisine_label = serializers.CharField(source="get_cuisine_display", read_only=True)
+    image_key = serializers.CharField(write_only=True, required=False)
+    image_storage_key = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    images = RecipeImageSerializer(source="recipe_images", many=True, read_only=True)
+    image_items = RecipeImageWriteSerializer(many=True, write_only=True, required=False)
     published_date = serializers.CharField(read_only=True)
     total_time = serializers.IntegerField(read_only=True)
     is_owner = serializers.SerializerMethodField()
@@ -116,6 +150,12 @@ class RecipeSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "description",
+            "image",
+            "image_key",
+            "image_storage_key",
+            "image_url",
+            "images",
+            "image_items",
             "prep_time",
             "cook_time",
             "servings",
@@ -144,6 +184,10 @@ class RecipeSerializer(serializers.ModelSerializer):
             "id",
             "created_by",
             "created_by_username",
+            "image",
+            "image_storage_key",
+            "image_url",
+            "images",
             "is_owner",
             "like_count",
             "save_count",
@@ -160,6 +204,29 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_owner(self, obj):
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated and obj.created_by_id == request.user.id)
+
+    def get_image_url(self, obj):
+        hero_image = self.get_hero_image(obj)
+        if hero_image:
+            return self.build_image_url(hero_image)
+
+        if not obj.image:
+            return ""
+        return self.build_image_url(obj.image)
+
+    def get_image_storage_key(self, obj):
+        return obj.image.name if obj.image else ""
+
+    def get_hero_image(self, obj):
+        for recipe_image in obj.recipe_images.all():
+            if recipe_image.position == 0 and recipe_image.image:
+                return recipe_image.image
+        return None
+
+    def build_image_url(self, image):
+        request = self.context.get("request")
+        url = image.url
+        return request.build_absolute_uri(url) if request else url
 
     def get_like_count(self, obj):
         like_count = getattr(obj, "like_count", None)
@@ -199,8 +266,33 @@ class RecipeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Choose a valid cuisine.")
         return value
 
+    def validate_recipe_image_key(self, value):
+        if not settings.USE_S3:
+            raise serializers.ValidationError("Presigned recipe image uploads require S3 storage.")
+
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            raise serializers.ValidationError("Unable to validate recipe image ownership.")
+        if self.instance is None:
+            raise serializers.ValidationError("Recipe image keys can only be attached to an existing recipe.")
+
+        path = PurePosixPath(value)
+        expected_prefix = f"{recipe_images_prefix(self.instance.created_by_id, self.instance.id)}/"
+        if path.is_absolute() or ".." in path.parts or not value.startswith(expected_prefix):
+            raise serializers.ValidationError("Invalid recipe image key.")
+
+        suffix = path.suffix.lower()
+        if suffix not in set(ALLOWED_IMAGE_CONTENT_TYPES.values()):
+            raise serializers.ValidationError("Unsupported recipe image file type.")
+
+        return value
+
+    def validate_image_key(self, value):
+        return self.validate_recipe_image_key(value)
+
     def validate(self, attrs):
         instruction_items = attrs.get("instruction_items")
+        image_items = attrs.get("image_items")
         has_instruction_items = instruction_items is not None and any(
             item["text"].strip() for item in instruction_items
         )
@@ -210,6 +302,17 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         if instruction_items is not None and not has_instruction_items:
             raise serializers.ValidationError({"instruction_items": "Add at least one instruction step."})
+
+        if image_items is not None:
+            if self.instance is None:
+                raise serializers.ValidationError({"image_items": "Recipe images can only be attached to an existing recipe."})
+
+            positions = [item["position"] for item in image_items]
+            if len(positions) != len(set(positions)):
+                raise serializers.ValidationError({"image_items": "Each recipe image position can only be set once."})
+
+            for item in image_items:
+                self.validate_recipe_image_key(item["image_key"])
 
         return attrs
 
@@ -226,16 +329,48 @@ class RecipeSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         ingredient_items = validated_data.pop("ingredient_items", None)
         instruction_items = validated_data.pop("instruction_items", None)
+        image_key = validated_data.pop("image_key", None)
+        image_items = validated_data.pop("image_items", None)
 
         with transaction.atomic():
             for field, value in validated_data.items():
                 setattr(instance, field, value)
             instance.save()
+            if image_key:
+                self._upsert_image(instance, 0, image_key)
+            if image_items is not None:
+                self._replace_images(instance, image_items)
             if ingredient_items is not None:
                 self._replace_ingredients(instance, ingredient_items)
             if instruction_items is not None:
                 self._replace_instructions(instance, instruction_items)
         return instance
+
+    def _upsert_image(self, recipe, position, image_key):
+        RecipeImage.objects.update_or_create(
+            recipe=recipe,
+            position=position,
+            defaults={"image": image_key},
+        )
+        getattr(recipe, "_prefetched_objects_cache", {}).pop("recipe_images", None)
+        if position == 0:
+            recipe.image.name = image_key
+            recipe.save(update_fields=["image"])
+
+    def _replace_images(self, recipe, image_items):
+        recipe.recipe_images.all().delete()
+
+        RecipeImage.objects.bulk_create(
+            [
+                RecipeImage(recipe=recipe, position=item["position"], image=item["image_key"])
+                for item in sorted(image_items, key=lambda image_item: image_item["position"])
+            ]
+        )
+        getattr(recipe, "_prefetched_objects_cache", {}).pop("recipe_images", None)
+
+        hero_item = next((item for item in image_items if item["position"] == 0), None)
+        recipe.image.name = hero_item["image_key"] if hero_item else ""
+        recipe.save(update_fields=["image"])
 
     def _replace_ingredients(self, recipe, ingredient_items):
         recipe.recipe_ingredients.all().delete()

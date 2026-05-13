@@ -1,5 +1,6 @@
-import { useEffect, useId, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
+import DeleteIcon from '@mui/icons-material/Delete'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
@@ -8,14 +9,18 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
+import { ImageCropDialog } from '../../components/ImageCropDialog'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
+import { uploadToPresignedPost } from '../../lib/presignedUploads'
 import type {
   AuthState,
   Cuisine,
   Ingredient,
   Navigate,
   Recipe,
+  RecipeImageInput,
+  RecipeImageUploadSignature,
   RecipeIngredientInput,
   RecipeInstructionInput,
   RecipePayload,
@@ -35,6 +40,18 @@ type RecipeFormState = {
   ingredient_items: RecipeIngredientInput[]
 }
 
+type RecipeImageSlot = {
+  file: File | null
+  imageKey: string
+  imageUrl: string
+}
+
+type PendingRecipeImageCrop = {
+  file: File
+  previewUrl: string
+  targetPosition: number
+}
+
 const emptyRecipeForm: RecipeFormState = {
   title: '',
   description: '',
@@ -48,6 +65,33 @@ const emptyRecipeForm: RecipeFormState = {
 }
 
 const maximumIngredientSuggestions = 6
+const recipeImageCropAspect = 2 / 1
+const recipeImageSlotCount = 5
+const recipeFormSelectMenuProps = {
+  classes: {
+    paper: 'recipe-form-select-menu',
+  },
+}
+
+function emptyImageSlot(): RecipeImageSlot {
+  return { file: null, imageKey: '', imageUrl: '' }
+}
+
+function emptyImageSlots() {
+  return Array.from({ length: recipeImageSlotCount }, emptyImageSlot)
+}
+
+function hasRecipeImageSlot(slot: RecipeImageSlot) {
+  return Boolean(slot.file || slot.imageKey || slot.imageUrl)
+}
+
+function compactRecipeImageSlots(slots: RecipeImageSlot[]) {
+  const filledSlots = slots.filter(hasRecipeImageSlot)
+  return [
+    ...filledSlots,
+    ...Array.from({ length: recipeImageSlotCount - filledSlots.length }, emptyImageSlot),
+  ].slice(0, recipeImageSlotCount)
+}
 
 function fieldSuffix(label: string, className = '') {
   return (
@@ -112,7 +156,15 @@ export function RecipeFormPage({
   const [unitOptions, setUnitOptions] = useState<RecipeUnit[]>([])
   const [openIngredientIndex, setOpenIngredientIndex] = useState<number | null>(null)
   const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
+  const [imageSlots, setImageSlots] = useState<RecipeImageSlot[]>(() => emptyImageSlots())
+  const [imageSetChanged, setImageSetChanged] = useState(false)
+  const [pendingImageCrop, setPendingImageCrop] = useState<PendingRecipeImageCrop | null>(null)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const imagePreviewUrls = useMemo(
+    () => imageSlots.map((slot) => (slot.file ? URL.createObjectURL(slot.file) : '')),
+    [imageSlots],
+  )
   const editing = recipeId !== undefined
   const prepTimeInputId = `${recipeFormId}-prep-time`
   const cookTimeInputId = `${recipeFormId}-cook-time`
@@ -155,6 +207,25 @@ export function RecipeFormPage({
         const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`)
         if (!active) return
         setForm(recipeToForm(recipe))
+        const nextImageSlots = emptyImageSlots()
+        recipe.images.forEach((image) => {
+          if (image.position >= 0 && image.position < recipeImageSlotCount) {
+            nextImageSlots[image.position] = {
+              file: null,
+              imageKey: image.image_key,
+              imageUrl: image.image_url,
+            }
+          }
+        })
+        if (!nextImageSlots[0].imageUrl && recipe.image_url) {
+          nextImageSlots[0] = {
+            file: null,
+            imageKey: recipe.image_storage_key,
+            imageUrl: recipe.image_url,
+          }
+        }
+        setImageSlots(nextImageSlots)
+        setImageSetChanged(false)
       } catch (requestError) {
         if (!active) return
         setError(formatErrors(requestError))
@@ -167,6 +238,20 @@ export function RecipeFormPage({
       active = false
     }
   }, [recipeId])
+
+  useEffect(() => {
+    return () => {
+      imagePreviewUrls.forEach((previewUrl) => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+      })
+    }
+  }, [imagePreviewUrls])
+
+  useEffect(() => {
+    return () => {
+      if (pendingImageCrop?.previewUrl) URL.revokeObjectURL(pendingImageCrop.previewUrl)
+    }
+  }, [pendingImageCrop])
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
@@ -311,6 +396,50 @@ export function RecipeFormPage({
     setActiveIngredientSuggestionIndex(-1)
   }
 
+  function selectRecipeImage(position: number, event: ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0] ?? null
+    event.target.value = ''
+
+    if (!selectedFile) {
+      return
+    }
+
+    if (!selectedFile.type.startsWith('image/')) {
+      setError('Choose an image file.')
+      return
+    }
+
+    const clickedSlotHasImage = hasRecipeImageSlot(imageSlots[position])
+    const firstEmptyPosition = imageSlots.findIndex((slot) => !hasRecipeImageSlot(slot))
+    const targetPosition = clickedSlotHasImage || firstEmptyPosition === -1 ? position : firstEmptyPosition
+
+    setPendingImageCrop({
+      file: selectedFile,
+      previewUrl: URL.createObjectURL(selectedFile),
+      targetPosition,
+    })
+  }
+
+  function applyRecipeImageCrop(croppedFile: File) {
+    if (!pendingImageCrop) {
+      setError('Choose an image before applying a crop.')
+      return
+    }
+
+    setImageSlots((current) =>
+      current.map((slot, index) =>
+        index === pendingImageCrop.targetPosition ? { file: croppedFile, imageKey: '', imageUrl: '' } : slot,
+      ),
+    )
+    setImageSetChanged(true)
+    setPendingImageCrop(null)
+  }
+
+  function removeRecipeImage(position: number) {
+    setImageSlots((current) => compactRecipeImageSlots(current.filter((_, index) => index !== position)))
+    setImageSetChanged(true)
+  }
+
   function ingredientItemsForPayload(): RecipePayload['ingredient_items'] {
     return form.ingredient_items
       .filter((ingredient) => ingredient.name.trim() && ingredient.quantity)
@@ -324,10 +453,15 @@ export function RecipeFormPage({
       }))
   }
 
-  function toPayload(ingredientItems: RecipePayload['ingredient_items']): RecipePayload {
+  function toPayload(
+    ingredientItems: RecipePayload['ingredient_items'],
+    imageItems?: RecipeImageInput[],
+    includeImageItems = false,
+  ): RecipePayload {
     return {
       title: form.title,
       description: form.description,
+      ...(includeImageItems ? { image_items: imageItems ?? [] } : {}),
       prep_time: form.prep_time ? Number(form.prep_time) : null,
       cook_time: Number(form.cook_time),
       servings: Number(form.servings),
@@ -342,49 +476,188 @@ export function RecipeFormPage({
     }
   }
 
+  async function uploadRecipeImage(selectedFile: File, targetRecipeId: number, position: number) {
+    const contentType = selectedFile.type || 'application/octet-stream'
+    const signature = await apiFetch<RecipeImageUploadSignature>(
+      `/api/recipes/${targetRecipeId}/image-upload/`,
+      {
+        method: 'POST',
+        body: {
+          filename: selectedFile.name,
+          content_type: contentType,
+          size: selectedFile.size,
+          position,
+        },
+      },
+    )
+
+    await uploadToPresignedPost(signature, selectedFile, position === 0 ? 'Hero image' : `Gallery image ${position}`)
+    return { position, image_key: signature.recipe_image_key }
+  }
+
+  async function imageItemsForPayload(targetRecipeId: number, slots: RecipeImageSlot[]) {
+    const uploadedImageKeys = new Map<number, string>()
+    const selectedImages = slots
+      .map((slot, position) => ({ file: slot.file, position }))
+      .filter((item): item is { file: File; position: number } => item.file !== null)
+
+    for (const item of selectedImages) {
+      const uploadedImage = await uploadRecipeImage(item.file, targetRecipeId, item.position)
+      uploadedImageKeys.set(uploadedImage.position, uploadedImage.image_key)
+    }
+
+    return slots
+      .map((slot, position) => ({
+        position,
+        image_key: uploadedImageKeys.get(position) ?? slot.imageKey,
+      }))
+      .filter((item): item is RecipeImageInput => Boolean(item.image_key))
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
     const ingredientItems = ingredientItemsForPayload()
+    setSaving(true)
 
     try {
-      const recipe = await apiFetch<Recipe>(editing ? `/api/recipes/${recipeId}/` : '/api/recipes/', {
-        method: editing ? 'PATCH' : 'POST',
+      if (editing && recipeId) {
+        const imageItems = imageSetChanged ? await imageItemsForPayload(recipeId, imageSlots) : undefined
+        const recipe = await apiFetch<Recipe>(`/api/recipes/${recipeId}/`, {
+          method: 'PATCH',
+          body: toPayload(ingredientItems, imageItems, imageSetChanged),
+        })
+        navigate(`/recipes/${recipe.id}`)
+        return
+      }
+
+      const recipe = await apiFetch<Recipe>('/api/recipes/', {
+        method: 'POST',
         body: toPayload(ingredientItems),
       })
+
+      const imageItems = await imageItemsForPayload(recipe.id, imageSlots)
+      if (imageItems.length) {
+        const recipeWithImage = await apiFetch<Recipe>(`/api/recipes/${recipe.id}/`, {
+          method: 'PATCH',
+          body: { image_items: imageItems },
+        })
+        navigate(`/recipes/${recipeWithImage.id}`)
+        return
+      }
+
       navigate(`/recipes/${recipe.id}`)
     } catch (requestError) {
       setError(formatErrors(requestError))
+    } finally {
+      setSaving(false)
     }
   }
 
+  const recipeImageUrls = imagePreviewUrls.map((previewUrl, index) => previewUrl || imageSlots[index].imageUrl)
+  const filledRecipeImageCount = recipeImageUrls.filter(Boolean).length
+
   return (
     <section className="page-band">
-      <div className="form-shell">
+      {pendingImageCrop && (
+        <ImageCropDialog
+          aspect={recipeImageCropAspect}
+          imageSrc={pendingImageCrop.previewUrl}
+          key={pendingImageCrop.previewUrl}
+          open
+          sourceFile={pendingImageCrop.file}
+          title={
+            pendingImageCrop.targetPosition === 0
+              ? 'Crop hero image'
+              : `Crop gallery image ${pendingImageCrop.targetPosition}`
+          }
+          onApply={applyRecipeImageCrop}
+          onCancel={() => setPendingImageCrop(null)}
+        />
+      )}
+      <div className="form-shell recipe-form-shell">
         <h1>{editing ? 'Update Recipe' : 'Create Recipe'}</h1>
         {error && <Alert severity="error">{error}</Alert>}
-        <form onSubmit={(event) => void submit(event)} className="stacked-form">
-          <TextField
-            label="Title"
-            value={form.title}
-            onChange={(event) => setForm({ ...form, title: event.target.value })}
-            required
-          />
-          <TextField
-            label="Description"
-            value={form.description}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-            multiline
-            minRows={4}
-          />
-          <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor={prepTimeInputId}>Prep Time</label>
+        <form onSubmit={(event) => void submit(event)} className="stacked-form recipe-form-layout">
+          <aside className="recipe-gallery-panel" aria-label="Recipe image gallery">
+            <div className="recipe-gallery-header">
+              <div>
+                <h2>Gallery</h2>
+                <p>Set one hero image and up to four gallery images</p>
+              </div>
+              <span>{filledRecipeImageCount}/5</span>
+            </div>
+            <div className="recipe-image-slot recipe-hero-image-slot">
+              <ButtonBase aria-label="Upload hero image" className="recipe-hero-upload" component="label">
+                {recipeImageUrls[0] ? (
+                  <img src={recipeImageUrls[0]} alt="" />
+                ) : (
+                  <span className="recipe-hero-upload-empty">
+                    <span className="recipe-hero-upload-icon" aria-hidden="true" />
+                  </span>
+                )}
+                <span className="recipe-hero-upload-overlay">{recipeImageUrls[0] ? 'Change hero image' : ''}</span>
+                <input hidden accept="image/*" type="file" onChange={(event) => selectRecipeImage(0, event)} />
+              </ButtonBase>
+              {recipeImageUrls[0] && (
+                <button
+                  aria-label="Remove hero image"
+                  className="recipe-image-remove-button"
+                  type="button"
+                  onClick={() => removeRecipeImage(0)}
+                >
+                  <DeleteIcon aria-hidden="true" fontSize="inherit" />
+                </button>
+              )}
+            </div>
+            <div className="recipe-gallery-thumbnails">
+              {[1, 2, 3, 4].map((position) => (
+                <div className="recipe-image-slot recipe-gallery-thumb-slot" key={position}>
+                  <ButtonBase
+                    aria-label={`Upload gallery image ${position}`}
+                    className={`recipe-gallery-thumb ${recipeImageUrls[position] ? 'filled' : 'placeholder'}`}
+                    component="label"
+                  >
+                    {recipeImageUrls[position] ? <img src={recipeImageUrls[position]} alt="" /> : <span />}
+                    {recipeImageUrls[position] && <span className="recipe-gallery-thumb-overlay">Change</span>}
+                    <input hidden accept="image/*" type="file" onChange={(event) => selectRecipeImage(position, event)} />
+                  </ButtonBase>
+                  {recipeImageUrls[position] && (
+                    <button
+                      aria-label={`Remove gallery image ${position}`}
+                      className="recipe-image-remove-button recipe-image-remove-button-small"
+                      type="button"
+                      onClick={() => removeRecipeImage(position)}
+                    >
+                      <DeleteIcon aria-hidden="true" fontSize="inherit" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          <div className="recipe-form-fields">
+            <TextField
+              label="Title"
+              value={form.title}
+              onChange={(event) => setForm({ ...form, title: event.target.value })}
+              required
+            />
+            <TextField
+              label="Description"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              multiline
+              minRows={4}
+            />
+            <div className="form-grid">
               <TextField
                 className="mui-suffixed-field"
                 fullWidth
-                hiddenLabel
                 id={prepTimeInputId}
+                label="Prep Time"
+                required
                 size="small"
                 type="number"
                 value={form.prep_time}
@@ -396,14 +669,11 @@ export function RecipeFormPage({
                   },
                 }}
               />
-            </div>
-            <div className="form-field">
-              <label htmlFor={cookTimeInputId}>Cook Time</label>
               <TextField
                 className="mui-suffixed-field"
                 fullWidth
-                hiddenLabel
                 id={cookTimeInputId}
+                label="Cook Time"
                 required
                 size="small"
                 type="number"
@@ -416,7 +686,6 @@ export function RecipeFormPage({
                   },
                 }}
               />
-            </div>
             <TextField
               label="Servings"
               type="number"
@@ -430,6 +699,11 @@ export function RecipeFormPage({
               select
               value={form.cuisine}
               onChange={(event) => setForm({ ...form, cuisine: event.target.value })}
+              slotProps={{
+                select: {
+                  MenuProps: recipeFormSelectMenuProps,
+                },
+              }}
             >
                 {cuisines.map((cuisine) => (
                   <MenuItem key={cuisine.value} value={cuisine.value}>
@@ -437,23 +711,23 @@ export function RecipeFormPage({
                   </MenuItem>
                 ))}
             </TextField>
-          </div>
-          <FormControlLabel
-            className="checkbox-row"
-            control={
-              <Checkbox
-                checked={form.is_public}
-                onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
-              />
-            }
-            label="Public recipe"
-          />
-
-          <section className="content-section">
-            <div className="form-section-header">
-              <h2>Ingredients</h2>
             </div>
-            <div className="ingredient-editor">
+            <FormControlLabel
+              className="checkbox-row"
+              control={
+                <Checkbox
+                  checked={form.is_public}
+                  onChange={(event) => setForm({ ...form, is_public: event.target.checked })}
+                />
+              }
+              label="Public recipe"
+            />
+
+            <section className="content-section">
+              <div className="form-section-header">
+                <h2>Ingredients</h2>
+              </div>
+              <div className="ingredient-editor">
               {form.ingredient_items.map((item, index) => {
                 const suggestions = ingredientSuggestionsFor(item.name)
                 const showIngredientSuggestions =
@@ -476,6 +750,11 @@ export function RecipeFormPage({
                       select
                       value={item.unit}
                       onChange={(event) => updateIngredientUnit(index, event.target.value)}
+                      slotProps={{
+                        select: {
+                          MenuProps: recipeFormSelectMenuProps,
+                        },
+                      }}
                     >
                       {unitOptions.map((unit) => (
                         <MenuItem key={unit.value || 'no-unit'} value={unit.value}>
@@ -571,14 +850,14 @@ export function RecipeFormPage({
               <Button type="button" className="secondary-button" variant="contained" onClick={addIngredient}>
                 Add ingredient
               </Button>
-            </div>
-          </section>
+              </div>
+            </section>
 
-          <section className="content-section">
-            <div className="form-section-header">
-              <h2>Instructions</h2>
-            </div>
-            <div className="instruction-editor">
+            <section className="content-section">
+              <div className="form-section-header">
+                <h2>Instructions</h2>
+              </div>
+              <div className="instruction-editor">
               {form.instruction_items.map((item, index) => (
                 <div className="instruction-row" key={`instruction-${index}`}>
                   <span className="step-number">{index + 1}</span>
@@ -605,18 +884,24 @@ export function RecipeFormPage({
               <Button type="button" className="secondary-button" variant="contained" onClick={addInstruction}>
                 Add instruction step
               </Button>
-            </div>
-          </section>
+              </div>
+            </section>
 
-          <div className="action-row">
-            <Button type="submit" className="primary-button" variant="contained">
-              {editing ? 'Save Changes' : 'Create Recipe'}
-            </Button>
-            {editing && recipeId && (
-              <Button type="button" className="text-button" variant="text" onClick={() => navigate(`/recipes/${recipeId}`)}>
-                Cancel
+            <div className="action-row">
+              <Button type="submit" className="primary-button" variant="contained" disabled={saving}>
+                {saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Recipe'}
               </Button>
-            )}
+              {editing && recipeId && (
+                <Button
+                  type="button"
+                  className="text-button"
+                  variant="text"
+                  onClick={() => navigate(`/recipes/${recipeId}`)}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </div>

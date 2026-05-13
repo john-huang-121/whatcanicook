@@ -1,14 +1,22 @@
+from pathlib import PurePosixPath
+
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from whatcanicook.services.uploads import ALLOWED_IMAGE_CONTENT_TYPES
+from whatcanicook.upload_serializers import ImageUploadRequestSerializer
+
 from .models import Profile
+from .storage_paths import profile_picture_prefix
 
 User = get_user_model()
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(read_only=True)
+    profile_picture_key = serializers.CharField(write_only=True, required=False)
     profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -18,6 +26,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "last_name",
             "display_name",
             "profile_picture",
+            "profile_picture_key",
             "profile_picture_url",
             "twitter_x_url",
             "instagram_url",
@@ -27,6 +36,25 @@ class ProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["display_name", "profile_picture_url"]
 
+    def validate_profile_picture_key(self, value):
+        if not settings.USE_S3:
+            raise serializers.ValidationError("Presigned profile picture uploads require S3 storage.")
+
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            raise serializers.ValidationError("Unable to validate profile picture ownership.")
+
+        path = PurePosixPath(value)
+        expected_prefix = f"{profile_picture_prefix(request.user.id)}/"
+        if path.is_absolute() or ".." in path.parts or not value.startswith(expected_prefix):
+            raise serializers.ValidationError("Invalid profile picture key.")
+
+        suffix = path.suffix.lower()
+        if suffix not in set(ALLOWED_IMAGE_CONTENT_TYPES.values()):
+            raise serializers.ValidationError("Unsupported profile picture file type.")
+
+        return value
+
     def get_profile_picture_url(self, obj):
         if not obj.profile_picture:
             return ""
@@ -34,6 +62,20 @@ class ProfileSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         url = obj.profile_picture.url
         return request.build_absolute_uri(url) if request else url
+
+    def update(self, instance, validated_data):
+        profile_picture_key = validated_data.pop("profile_picture_key", None)
+        instance = super().update(instance, validated_data)
+
+        if profile_picture_key:
+            instance.profile_picture.name = profile_picture_key
+            instance.save(update_fields=["profile_picture"])
+
+        return instance
+
+
+class AvatarUploadRequestSerializer(ImageUploadRequestSerializer):
+    pass
 
 
 class UserSerializer(serializers.ModelSerializer):

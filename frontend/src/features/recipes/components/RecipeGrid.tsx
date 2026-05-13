@@ -16,7 +16,7 @@ export function RecipeGrid({ recipes, navigate }: { recipes: Recipe[]; navigate:
             onClick={() => navigate(`/recipes/${recipe.id}`)}
           >
             <div className="recipe-card-image">
-              <img src={recipeImage} alt="" />
+              <img src={recipe.image_url || recipeImage} alt="" />
             </div>
             <div className="recipe-card-body">
               <div className="recipe-card-tags">

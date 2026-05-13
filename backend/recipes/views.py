@@ -1,11 +1,16 @@
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
+from whatcanicook.services.uploads import S3UploadService, UploadServiceError
+from whatcanicook.upload_serializers import ImageUploadRequestSerializer
+
+from .models import MAX_RECIPE_IMAGES, Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
 from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer, UnitSerializer
+from .storage_paths import recipe_image_storage_name
 
 
 def visible_recipes_for(user):
@@ -16,6 +21,7 @@ def visible_recipes_for(user):
             "recipe_ingredients__ingredient",
             "recipe_ingredients__user_ingredient",
             "recipe_instructions__instruction",
+            "recipe_images",
         )
         .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
     )
@@ -162,6 +168,7 @@ class RecipeDetailView(APIView):
                 "recipe_ingredients__ingredient",
                 "recipe_ingredients__user_ingredient",
                 "recipe_instructions__instruction",
+                "recipe_images",
             ),
             pk=recipe_id,
         )
@@ -214,3 +221,57 @@ class RecipeDetailView(APIView):
 
         recipe.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RecipeImageUploadView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, recipe_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=401)
+        if not settings.USE_S3:
+            return Response(
+                {"detail": "S3 recipe image uploads are not configured."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        recipe = get_object_or_404(Recipe.objects.select_related("created_by"), pk=recipe_id)
+        if not recipe.can_edit(request.user):
+            return Response({"detail": "You do not have permission to edit this recipe."}, status=403)
+
+        serializer = ImageUploadRequestSerializer(
+            data=request.data,
+            context={"max_bytes": settings.RECIPE_IMAGE_UPLOAD_MAX_BYTES},
+        )
+        serializer.is_valid(raise_exception=True)
+        try:
+            position = int(request.data.get("position", 0))
+        except (TypeError, ValueError):
+            return Response({"position": ["Enter a whole number."]}, status=status.HTTP_400_BAD_REQUEST)
+        if position < 0 or position >= MAX_RECIPE_IMAGES:
+            return Response(
+                {"position": [f"Recipe image position must be between 0 and {MAX_RECIPE_IMAGES - 1}."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_key = recipe_image_storage_name(
+            recipe.created_by_id,
+            recipe.id,
+            serializer.validated_data["extension"],
+        )
+
+        try:
+            upload = S3UploadService().create_presigned_image_upload(
+                file_key=file_key,
+                content_type=serializer.validated_data["content_type"],
+                max_bytes=settings.RECIPE_IMAGE_UPLOAD_MAX_BYTES,
+            )
+        except UploadServiceError:
+            return Response(
+                {"detail": "Unable to prepare recipe image upload."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        response_data = upload.as_response_data("recipe_image_key")
+        response_data["position"] = position
+        return Response(response_data)

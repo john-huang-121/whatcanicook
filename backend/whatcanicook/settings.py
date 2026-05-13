@@ -12,18 +12,24 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
+import environ
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8etsqcp(98k6@at@t7^%un@t%vpc9gupp0)h2^cq38#gu0eaey'
+SECRET_KEY = env("SECRET_KEY", default="")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG", default=True)
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
@@ -36,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
     'rest_framework',
     'accounts.apps.AccountsConfig',
     'recipes.apps.RecipesConfig',
@@ -142,6 +149,16 @@ STATIC_URL = 'static/'
 # for production collectstatic
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+STORAGES = {
+    "default": {
+        # Model file uploads, including profile avatar uploads, use this storage.
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -151,3 +168,31 @@ AUTH_USER_MODEL = 'accounts.User'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+USE_S3 = env.bool("USE_S3", default=False)
+AVATAR_UPLOAD_MAX_BYTES = env.int("AVATAR_UPLOAD_MAX_BYTES", default=10 * 1024 * 1024)
+RECIPE_IMAGE_UPLOAD_MAX_BYTES = env.int("RECIPE_IMAGE_UPLOAD_MAX_BYTES", default=25 * 1024 * 1024)
+S3_PRESIGNED_UPLOAD_EXPIRES = env.int("S3_PRESIGNED_UPLOAD_EXPIRES", default=300)
+
+# Profile.profile_picture uses Django's default storage, so USE_S3=True stores
+# avatar uploads in S3.
+if USE_S3:
+    AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+    if not AWS_STORAGE_BUCKET_NAME:
+        raise ImproperlyConfigured("USE_S3=True requires AWS_STORAGE_BUCKET_NAME to be set.")
+
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="").strip() or None
+
+    S3_STORAGE_OPTIONS = {
+        "bucket_name": AWS_STORAGE_BUCKET_NAME,
+        "file_overwrite": env.bool("AWS_S3_FILE_OVERWRITE", default=False),
+        "querystring_auth": env.bool("AWS_QUERYSTRING_AUTH", default=True),
+    }
+
+    if AWS_S3_REGION_NAME:
+        S3_STORAGE_OPTIONS["region_name"] = AWS_S3_REGION_NAME
+
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": S3_STORAGE_OPTIONS,
+    }

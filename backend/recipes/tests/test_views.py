@@ -1,5 +1,7 @@
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from recipes.models import (
@@ -8,11 +10,13 @@ from recipes.models import (
     Instruction,
     Recipe,
     RecipeIngredient,
+    RecipeImage,
     RecipeInstruction,
     Unit,
     UserIngredient,
     UserIngredientStatus,
 )
+from recipes.storage_paths import recipe_images_prefix
 
 User = get_user_model()
 
@@ -148,6 +152,9 @@ class RecipeApiTests(TestCase):
         self.assertEqual(recipe.recipe_ingredients.get(ingredient__name="salt").note, "fine sea salt")
         self.assertEqual(recipe.recipe_ingredients.get(user_ingredient__name="pepper").user_ingredient.status, "under_review")
         self.assertEqual(response.json()["ingredients"][1]["review_status"], "under_review")
+        self.assertIn("image", response.json())
+        self.assertIn("image_url", response.json())
+        self.assertIn("images", response.json())
 
     def test_anonymous_cannot_view_private_recipe(self):
         response = self.client.get(reverse("recipes:recipe-detail", args=[self.private_recipe.id]))
@@ -368,6 +375,262 @@ class RecipeApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(instruction_steps, ["Boil pasta.", "Finish with sauce."])
         self.assertEqual(response.json()["instructions"][1]["step_number"], 2)
+
+    @override_settings(USE_S3=True)
+    def test_owner_can_update_recipe_image_from_presigned_upload_key(self):
+        self.client.login(username="owner", password="testpass123")
+
+        image_key = f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/cover.png"
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {"image_key": image_key},
+            content_type="application/json",
+        )
+
+        self.public_recipe.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.public_recipe.image.name, image_key)
+        self.assertEqual(
+            RecipeImage.objects.get(recipe=self.public_recipe, position=0).image.name,
+            image_key,
+        )
+
+    @override_settings(USE_S3=True)
+    def test_owner_can_update_recipe_gallery_images_from_presigned_upload_keys(self):
+        self.client.login(username="owner", password="testpass123")
+
+        image_items = [
+            {
+                "position": 0,
+                "image_key": f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/hero.png",
+            },
+            {
+                "position": 4,
+                "image_key": f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/gallery.png",
+            },
+        ]
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {"image_items": image_items},
+            content_type="application/json",
+        )
+
+        self.public_recipe.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.public_recipe.image.name, image_items[0]["image_key"])
+        self.assertEqual(self.public_recipe.recipe_images.count(), 2)
+        self.assertEqual(response.json()["images"][0]["position"], 0)
+        self.assertEqual(response.json()["images"][0]["image_key"], image_items[0]["image_key"])
+        self.assertEqual(response.json()["images"][1]["position"], 4)
+
+    @override_settings(USE_S3=True)
+    def test_owner_can_replace_recipe_gallery_images_from_complete_image_items(self):
+        self.client.login(username="owner", password="testpass123")
+        image_keys = [
+            f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/hero.png",
+            f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/middle.png",
+            f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/final.png",
+        ]
+        for position, image_key in enumerate(image_keys):
+            RecipeImage.objects.create(recipe=self.public_recipe, position=position, image=image_key)
+        self.public_recipe.image.name = image_keys[0]
+        self.public_recipe.save(update_fields=["image"])
+
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {
+                "image_items": [
+                    {"position": 0, "image_key": image_keys[0]},
+                    {"position": 1, "image_key": image_keys[2]},
+                ],
+            },
+            content_type="application/json",
+        )
+
+        self.public_recipe.refresh_from_db()
+        recipe_images = list(self.public_recipe.recipe_images.order_by("position"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.public_recipe.image.name, image_keys[0])
+        self.assertEqual([(image.position, image.image.name) for image in recipe_images], [(0, image_keys[0]), (1, image_keys[2])])
+        self.assertEqual([image["position"] for image in response.json()["images"]], [0, 1])
+
+    @override_settings(USE_S3=True)
+    def test_owner_can_remove_all_recipe_gallery_images(self):
+        self.client.login(username="owner", password="testpass123")
+        image_key = f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/hero.png"
+        RecipeImage.objects.create(recipe=self.public_recipe, position=0, image=image_key)
+        self.public_recipe.image.name = image_key
+        self.public_recipe.save(update_fields=["image"])
+
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {"image_items": []},
+            content_type="application/json",
+        )
+
+        self.public_recipe.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.public_recipe.image.name, "")
+        self.assertFalse(self.public_recipe.recipe_images.exists())
+        self.assertEqual(response.json()["images"], [])
+
+    @override_settings(USE_S3=True)
+    def test_recipe_gallery_image_positions_must_be_unique(self):
+        self.client.login(username="owner", password="testpass123")
+
+        image_key = f"users/user_{self.owner.id}/recipes/recipe_{self.public_recipe.id}/cover.png"
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {
+                "image_items": [
+                    {"position": 1, "image_key": image_key},
+                    {"position": 1, "image_key": image_key},
+                ],
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(USE_S3=True)
+    def test_recipe_image_key_must_belong_to_recipe_owner_and_recipe(self):
+        self.client.login(username="owner", password="testpass123")
+
+        response = self.client.patch(
+            reverse("recipes:recipe-detail", args=[self.public_recipe.id]),
+            {
+                "image_key": f"users/user_{self.other_user.id}/recipes/recipe_{self.public_recipe.id}/cover.png",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(
+        USE_S3=True,
+        AWS_STORAGE_BUCKET_NAME="test-bucket",
+        AWS_S3_REGION_NAME="us-west-1",
+        S3_STORAGE_OPTIONS={},
+        RECIPE_IMAGE_UPLOAD_MAX_BYTES=2048,
+        S3_PRESIGNED_UPLOAD_EXPIRES=300,
+    )
+    @patch("whatcanicook.services.uploads.boto3.client")
+    def test_owner_can_request_presigned_recipe_image_upload(self, client_factory):
+        self.client.login(username="owner", password="testpass123")
+        s3_client = Mock()
+        s3_client.generate_presigned_post.return_value = {
+            "url": "https://s3.example.test/",
+            "fields": {"key": "users/user_1/recipes/recipe_1/cover.png"},
+        }
+        client_factory.return_value = s3_client
+
+        response = self.client.post(
+            reverse("recipes:recipe-image-upload", args=[self.public_recipe.id]),
+            {
+                "filename": "cover.png",
+                "content_type": "image/png",
+                "size": 1024,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["upload_url"], "https://s3.example.test/")
+        self.assertTrue(
+            data["recipe_image_key"].startswith(
+                f"{recipe_images_prefix(self.owner.id, self.public_recipe.id)}/"
+            )
+        )
+        self.assertTrue(
+            data["object_key"].startswith(
+                f"{recipe_images_prefix(self.owner.id, self.public_recipe.id)}/"
+            )
+        )
+        self.assertEqual(data["max_bytes"], 2048)
+        self.assertEqual(data["position"], 0)
+        s3_client.generate_presigned_post.assert_called_once()
+
+    @override_settings(
+        USE_S3=True,
+        AWS_STORAGE_BUCKET_NAME="test-bucket",
+        AWS_S3_REGION_NAME="us-west-1",
+        S3_STORAGE_OPTIONS={},
+        RECIPE_IMAGE_UPLOAD_MAX_BYTES=2048,
+        S3_PRESIGNED_UPLOAD_EXPIRES=300,
+    )
+    @patch("whatcanicook.services.uploads.boto3.client")
+    def test_owner_can_request_presigned_recipe_gallery_image_upload(self, client_factory):
+        self.client.login(username="owner", password="testpass123")
+        s3_client = Mock()
+        s3_client.generate_presigned_post.return_value = {
+            "url": "https://s3.example.test/",
+            "fields": {"key": "users/user_1/recipes/recipe_1/gallery.png"},
+        }
+        client_factory.return_value = s3_client
+
+        response = self.client.post(
+            reverse("recipes:recipe-image-upload", args=[self.public_recipe.id]),
+            {
+                "filename": "gallery.png",
+                "content_type": "image/png",
+                "size": 1024,
+                "position": 4,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["position"], 4)
+
+    @override_settings(USE_S3=True, RECIPE_IMAGE_UPLOAD_MAX_BYTES=1024)
+    def test_presigned_recipe_image_upload_rejects_out_of_range_position(self):
+        self.client.login(username="owner", password="testpass123")
+
+        response = self.client.post(
+            reverse("recipes:recipe-image-upload", args=[self.public_recipe.id]),
+            {
+                "filename": "cover.png",
+                "content_type": "image/png",
+                "size": 512,
+                "position": 5,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(USE_S3=True)
+    def test_non_owner_cannot_request_presigned_recipe_image_upload(self):
+        self.client.login(username="other", password="testpass123")
+
+        response = self.client.post(
+            reverse("recipes:recipe-image-upload", args=[self.public_recipe.id]),
+            {
+                "filename": "cover.png",
+                "content_type": "image/png",
+                "size": 1024,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(USE_S3=True, RECIPE_IMAGE_UPLOAD_MAX_BYTES=1024)
+    def test_presigned_recipe_image_upload_rejects_non_images(self):
+        self.client.login(username="owner", password="testpass123")
+
+        response = self.client.post(
+            reverse("recipes:recipe-image-upload", args=[self.public_recipe.id]),
+            {
+                "filename": "cover.txt",
+                "content_type": "text/plain",
+                "size": 512,
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
 
     def test_owner_can_delete_recipe(self):
         self.client.login(username="owner", password="testpass123")
