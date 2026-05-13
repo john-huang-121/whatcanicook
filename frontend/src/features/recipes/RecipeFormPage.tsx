@@ -9,6 +9,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
+import { ImageCropDialog } from '../../components/ImageCropDialog'
 import { LoginRequiredPage } from '../../components/LoginRequiredPage'
 import { apiFetch } from '../../lib/api'
 import { uploadToPresignedPost } from '../../lib/presignedUploads'
@@ -45,6 +46,12 @@ type RecipeImageSlot = {
   imageUrl: string
 }
 
+type PendingRecipeImageCrop = {
+  file: File
+  previewUrl: string
+  targetPosition: number
+}
+
 const emptyRecipeForm: RecipeFormState = {
   title: '',
   description: '',
@@ -58,7 +65,13 @@ const emptyRecipeForm: RecipeFormState = {
 }
 
 const maximumIngredientSuggestions = 6
+const recipeImageCropAspect = 2 / 1
 const recipeImageSlotCount = 5
+const recipeFormSelectMenuProps = {
+  classes: {
+    paper: 'recipe-form-select-menu',
+  },
+}
 
 function emptyImageSlot(): RecipeImageSlot {
   return { file: null, imageKey: '', imageUrl: '' }
@@ -145,6 +158,7 @@ export function RecipeFormPage({
   const [activeIngredientSuggestionIndex, setActiveIngredientSuggestionIndex] = useState(-1)
   const [imageSlots, setImageSlots] = useState<RecipeImageSlot[]>(() => emptyImageSlots())
   const [imageSetChanged, setImageSetChanged] = useState(false)
+  const [pendingImageCrop, setPendingImageCrop] = useState<PendingRecipeImageCrop | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const imagePreviewUrls = useMemo(
@@ -232,6 +246,12 @@ export function RecipeFormPage({
       })
     }
   }, [imagePreviewUrls])
+
+  useEffect(() => {
+    return () => {
+      if (pendingImageCrop?.previewUrl) URL.revokeObjectURL(pendingImageCrop.previewUrl)
+    }
+  }, [pendingImageCrop])
 
   if (!auth.loading && !auth.authenticated) {
     return <LoginRequiredPage navigate={navigate} />
@@ -378,22 +398,41 @@ export function RecipeFormPage({
 
   function selectRecipeImage(position: number, event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null
+    event.target.value = ''
+
     if (!selectedFile) {
-      event.target.value = ''
       return
     }
 
-    setImageSlots((current) => {
-      const clickedSlotHasImage = hasRecipeImageSlot(current[position])
-      const firstEmptyPosition = current.findIndex((slot) => !hasRecipeImageSlot(slot))
-      const targetPosition = clickedSlotHasImage || firstEmptyPosition === -1 ? position : firstEmptyPosition
+    if (!selectedFile.type.startsWith('image/')) {
+      setError('Choose an image file.')
+      return
+    }
 
-      return current.map((slot, index) =>
-        index === targetPosition ? { file: selectedFile, imageKey: '', imageUrl: '' } : slot,
-      )
+    const clickedSlotHasImage = hasRecipeImageSlot(imageSlots[position])
+    const firstEmptyPosition = imageSlots.findIndex((slot) => !hasRecipeImageSlot(slot))
+    const targetPosition = clickedSlotHasImage || firstEmptyPosition === -1 ? position : firstEmptyPosition
+
+    setPendingImageCrop({
+      file: selectedFile,
+      previewUrl: URL.createObjectURL(selectedFile),
+      targetPosition,
     })
+  }
+
+  function applyRecipeImageCrop(croppedFile: File) {
+    if (!pendingImageCrop) {
+      setError('Choose an image before applying a crop.')
+      return
+    }
+
+    setImageSlots((current) =>
+      current.map((slot, index) =>
+        index === pendingImageCrop.targetPosition ? { file: croppedFile, imageKey: '', imageUrl: '' } : slot,
+      ),
+    )
     setImageSetChanged(true)
-    event.target.value = ''
+    setPendingImageCrop(null)
   }
 
   function removeRecipeImage(position: number) {
@@ -520,6 +559,22 @@ export function RecipeFormPage({
 
   return (
     <section className="page-band">
+      {pendingImageCrop && (
+        <ImageCropDialog
+          aspect={recipeImageCropAspect}
+          imageSrc={pendingImageCrop.previewUrl}
+          key={pendingImageCrop.previewUrl}
+          open
+          sourceFile={pendingImageCrop.file}
+          title={
+            pendingImageCrop.targetPosition === 0
+              ? 'Crop hero image'
+              : `Crop gallery image ${pendingImageCrop.targetPosition}`
+          }
+          onApply={applyRecipeImageCrop}
+          onCancel={() => setPendingImageCrop(null)}
+        />
+      )}
       <div className="form-shell recipe-form-shell">
         <h1>{editing ? 'Update Recipe' : 'Create Recipe'}</h1>
         {error && <Alert severity="error">{error}</Alert>}
@@ -597,13 +652,12 @@ export function RecipeFormPage({
               minRows={4}
             />
             <div className="form-grid">
-            <div className="form-field">
-              <label htmlFor={prepTimeInputId}>Prep Time</label>
               <TextField
                 className="mui-suffixed-field"
                 fullWidth
-                hiddenLabel
                 id={prepTimeInputId}
+                label="Prep Time"
+                required
                 size="small"
                 type="number"
                 value={form.prep_time}
@@ -615,14 +669,11 @@ export function RecipeFormPage({
                   },
                 }}
               />
-            </div>
-            <div className="form-field">
-              <label htmlFor={cookTimeInputId}>Cook Time</label>
               <TextField
                 className="mui-suffixed-field"
                 fullWidth
-                hiddenLabel
                 id={cookTimeInputId}
+                label="Cook Time"
                 required
                 size="small"
                 type="number"
@@ -635,7 +686,6 @@ export function RecipeFormPage({
                   },
                 }}
               />
-            </div>
             <TextField
               label="Servings"
               type="number"
@@ -649,6 +699,11 @@ export function RecipeFormPage({
               select
               value={form.cuisine}
               onChange={(event) => setForm({ ...form, cuisine: event.target.value })}
+              slotProps={{
+                select: {
+                  MenuProps: recipeFormSelectMenuProps,
+                },
+              }}
             >
                 {cuisines.map((cuisine) => (
                   <MenuItem key={cuisine.value} value={cuisine.value}>
@@ -695,6 +750,11 @@ export function RecipeFormPage({
                       select
                       value={item.unit}
                       onChange={(event) => updateIngredientUnit(index, event.target.value)}
+                      slotProps={{
+                        select: {
+                          MenuProps: recipeFormSelectMenuProps,
+                        },
+                      }}
                     >
                       {unitOptions.map((unit) => (
                         <MenuItem key={unit.value || 'no-unit'} value={unit.value}>

@@ -143,7 +143,7 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
       <div className="detail-shell recipe-detail-shell">
         <ImageCarousel
           ariaLabel="Recipe image carousel"
-          className="recipe-detail-carousel"
+          className="recipe-detail-carousel image-carousel-fit-contain"
           emptyLabel="Recipe Image"
           images={recipeImages}
           maxFloatingImages={5}

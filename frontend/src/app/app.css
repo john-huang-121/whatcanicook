@@ -987,6 +987,30 @@ p {
   gap: 1rem;
 }
 
+.recipe-form-shell .MuiInputBase-root,
+.recipe-form-shell .MuiOutlinedInput-root,
+.recipe-form-shell .MuiSelect-select,
+.recipe-form-shell input,
+.recipe-form-shell textarea,
+.recipe-form-select-menu.MuiPaper-root {
+  background-color: #fff;
+}
+
+.recipe-form-shell .MuiInputBase-input,
+.recipe-form-shell .MuiSelect-select {
+  background-color: transparent;
+}
+
+.recipe-form-select-menu .MuiMenuItem-root {
+  background-color: #fff;
+}
+
+.recipe-form-select-menu .MuiMenuItem-root:hover,
+.recipe-form-select-menu .MuiMenuItem-root.Mui-focusVisible,
+.recipe-form-select-menu .MuiMenuItem-root.Mui-selected {
+  background-color: #fff7ed;
+}
+
 .recipe-gallery-panel {
   display: grid;
   gap: 1rem;
@@ -1252,6 +1276,44 @@ p {
   transform: scale(1.04);
 }
 
+.image-crop-dialog .MuiDialog-paper {
+  border: 1px solid var(--heirloom-line, #e8d3c3);
+  border-radius: 0.5rem;
+  background: var(--heirloom-paper, #fffaf4);
+  color: var(--heirloom-ink, #3b261d);
+}
+
+.image-crop-dialog .MuiDialogTitle-root {
+  color: var(--heirloom-red-dark, #842413);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.image-crop-dialog-content.MuiDialogContent-root {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.3rem;
+}
+
+.image-cropper-frame {
+  position: relative;
+  height: min(58vh, 32rem);
+  min-height: 18rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: #24160f;
+}
+
+.image-crop-zoom-control {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--heirloom-muted, #755f4e);
+  font-weight: 850;
+}
+
+.image-crop-zoom-control .MuiSlider-root {
+  color: var(--heirloom-red, #a83820);
+}
+
 .stacked-form label:not(.MuiFormLabel-root),
 .form-field {
   display: grid;
@@ -1408,7 +1470,7 @@ textarea:not(.MuiInputBase-input) {
   overflow: hidden;
   border: 1px solid var(--style-line);
   border-radius: 1rem;
-  background: #fffdf8;
+  background: #fff;
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
 }
 
@@ -1418,7 +1480,7 @@ textarea:not(.MuiInputBase-input) {
   width: 100%;
   border: 0;
   border-bottom: 1px solid rgba(217, 95, 50, 0.12);
-  background: #fffdf8;
+  background: #fff;
   color: var(--style-ink);
   cursor: pointer;
   font: inherit;
@@ -2490,7 +2552,7 @@ main h3 {
 }
 
 .recipe-detail-carousel {
-  height: clamp(18rem, 38vw, 30rem);
+  aspect-ratio: 2 / 1;
   border-radius: 0.5rem;
   box-shadow: var(--heirloom-shadow);
 }
@@ -2508,6 +2570,10 @@ main h3 {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-carousel-fit-contain .image-carousel-frame > img {
+  object-fit: contain;
 }
 
 .image-carousel-empty {
@@ -2789,6 +2855,60 @@ main h3 {
   border-color: rgba(168, 56, 32, 0.68);
 }
 
+.recipe-form-shell .form-field,
+.recipe-form-shell .ingredient-row,
+.recipe-form-shell .MuiInputBase-root,
+.recipe-form-shell .MuiOutlinedInput-root,
+.recipe-form-shell .MuiSelect-select,
+.recipe-form-shell input,
+.recipe-form-shell textarea,
+.recipe-form-shell .recipe-gallery-panel,
+.recipe-form-shell .recipe-hero-upload.MuiButtonBase-root,
+.recipe-form-shell .recipe-gallery-thumb.MuiButtonBase-root,
+.recipe-form-shell .recipe-gallery-thumb.MuiButtonBase-root.filled {
+  background: #fff;
+  background-color: #fff;
+}
+
+.recipe-form-shell .recipe-hero-upload.MuiButtonBase-root:hover,
+.recipe-form-shell .recipe-hero-upload.MuiButtonBase-root:focus-visible,
+.recipe-form-shell .recipe-gallery-thumb.MuiButtonBase-root:hover,
+.recipe-form-shell .recipe-gallery-thumb.MuiButtonBase-root:focus-visible {
+  background: #fff;
+  background-color: #fff;
+}
+
+.recipe-form-shell .MuiOutlinedInput-root,
+.recipe-form-shell .mui-suffixed-field .MuiOutlinedInput-root {
+  min-height: 2.65rem;
+}
+
+.recipe-form-shell .ingredient-name-field .MuiOutlinedInput-root {
+  height: 2.65rem;
+}
+
+.recipe-form-shell .MuiInputBase-input,
+.recipe-form-shell .mui-suffixed-field .MuiOutlinedInput-input {
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+}
+
+.recipe-form-shell .MuiOutlinedInput-notchedOutline,
+.recipe-form-shell .mui-suffixed-field .MuiOutlinedInput-notchedOutline {
+  border-color: var(--heirloom-line);
+}
+
+.recipe-form-shell
+  .MuiOutlinedInput-root.Mui-focused
+  .MuiOutlinedInput-notchedOutline {
+  border-color: var(--heirloom-red);
+  border-width: 1px;
+}
+
+.recipe-form-shell .MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 0 0 0 3px rgba(168, 56, 32, 0.14);
+}
+
 @media (max-width: 900px) {
   .recipe-detail-content {
     width: min(100% - 1.5rem, 760px);
@@ -2805,10 +2925,6 @@ main h3 {
 }
 
 @media (max-width: 640px) {
-  .recipe-detail-carousel {
-    height: 21rem;
-  }
-
   .image-carousel-arrow.MuiIconButton-root {
     width: 2.2rem;
     height: 2.2rem;
@@ -2819,6 +2935,11 @@ main h3 {
     bottom: 0.75rem;
     overflow-x: auto;
     justify-content: flex-start;
+  }
+
+  .image-cropper-frame {
+    height: min(56vh, 24rem);
+    min-height: 14rem;
   }
 
   .recipe-detail-title-row {
