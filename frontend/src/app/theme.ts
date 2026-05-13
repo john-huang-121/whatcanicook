@@ -3,13 +3,13 @@ import { createTheme } from '@mui/material/styles'
 export const appTheme = createTheme({
   palette: {
     primary: {
-      main: '#a83820',
-      dark: '#842413',
+      main: '#c25e44',
+      dark: '#9b4a35',
       contrastText: '#fff7ed',
     },
     secondary: {
-      main: '#718032',
-      dark: '#4d5b1e',
+      main: '#8a9a5b',
+      dark: '#6f7d49',
       contrastText: '#fff7ed',
     },
     success: {
@@ -25,12 +25,12 @@ export const appTheme = createTheme({
       dark: '#78350f',
     },
     background: {
-      default: '#f8efe8',
-      paper: '#fffaf4',
+      default: '#fdf9f0',
+      paper: '#ffffff',
     },
     text: {
-      primary: '#3b261d',
-      secondary: '#755f4e',
+      primary: '#4a4238',
+      secondary: '#6b6257',
     },
   },
   shape: {
@@ -89,11 +89,11 @@ export const appTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: '0.35rem',
-          backgroundColor: '#fffaf4',
+          backgroundColor: '#ffffff',
         },
         notchedOutline: {
           borderRadius: '0.35rem',
-          borderColor: '#e8d3c3',
+          borderColor: '#d9d1c6',
         },
       },
     },
