@@ -1,16 +1,20 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status
+from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from recipes.models import Recipe
 from recipes.serializers import RecipeSerializer
 
-from .models import RecipeLike, SavedRecipe, UserFollow
+from .models import RecipeLike, RecipeRating, SavedRecipe, UserFollow
 
 User = get_user_model()
+
+
+class RecipeRatingWriteSerializer(serializers.Serializer):
+    rating = serializers.IntegerField(min_value=1, max_value=5)
 
 
 def recipe_queryset_for(user):
@@ -21,8 +25,14 @@ def recipe_queryset_for(user):
             "recipe_ingredients__ingredient",
             "recipe_ingredients__user_ingredient",
             "recipe_instructions__instruction",
+            "recipe_images",
         )
-        .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
+        .annotate(
+            like_count=Count("likes", distinct=True),
+            save_count=Count("saves", distinct=True),
+            average_rating=Avg("ratings__rating"),
+            rating_count=Count("ratings", distinct=True),
+        )
     )
 
 
@@ -34,8 +44,14 @@ def public_recipe_queryset():
             "recipe_ingredients__ingredient",
             "recipe_ingredients__user_ingredient",
             "recipe_instructions__instruction",
+            "recipe_images",
         )
-        .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
+        .annotate(
+            like_count=Count("likes", distinct=True),
+            save_count=Count("saves", distinct=True),
+            average_rating=Avg("ratings__rating"),
+            rating_count=Count("ratings", distinct=True),
+        )
     )
 
 
@@ -128,6 +144,7 @@ class SavedRecipeListView(APIView):
                 "recipe__recipe_ingredients__ingredient",
                 "recipe__recipe_ingredients__user_ingredient",
                 "recipe__recipe_instructions__instruction",
+                "recipe__recipe_images",
             )
             .order_by("-created_at")
         )
@@ -149,6 +166,7 @@ class DashboardView(APIView):
                 "recipe__recipe_ingredients__ingredient",
                 "recipe__recipe_ingredients__user_ingredient",
                 "recipe__recipe_instructions__instruction",
+                "recipe__recipe_images",
             )
             .order_by("-created_at")[:12]
         )
@@ -167,3 +185,32 @@ class DashboardView(APIView):
                 },
             }
         )
+
+
+class RecipeRatingView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_recipe(self, recipe_id):
+        return get_object_or_404(public_recipe_queryset(), pk=recipe_id)
+
+    def post(self, request, recipe_id):
+        recipe = self.get_recipe(recipe_id)
+        if recipe.created_by_id == request.user.id:
+            return Response({"detail": "You cannot rate your own recipe."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = RecipeRatingWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        RecipeRating.objects.update_or_create(
+            user=request.user,
+            recipe=recipe,
+            defaults={"rating": serializer.validated_data["rating"]},
+        )
+        recipe = self.get_recipe(recipe_id)
+        return Response(RecipeSerializer(recipe, context={"request": request}).data)
+
+    def delete(self, request, recipe_id):
+        recipe = self.get_recipe(recipe_id)
+        RecipeRating.objects.filter(user=request.user, recipe=recipe).delete()
+        recipe = self.get_recipe(recipe_id)
+        return Response(RecipeSerializer(recipe, context={"request": request}).data)

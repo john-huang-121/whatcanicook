@@ -1,10 +1,10 @@
 from pathlib import PurePosixPath
 
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from rest_framework import serializers
 
-from social.models import RecipeLike, SavedRecipe, UserFollow
+from social.models import RecipeLike, RecipeRating, SavedRecipe, UserFollow
 from whatcanicook.services.uploads import ALLOWED_IMAGE_CONTENT_TYPES
 
 from .models import (
@@ -137,6 +137,9 @@ class RecipeSerializer(serializers.ModelSerializer):
     save_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    rating_count = serializers.SerializerMethodField()
+    user_rating = serializers.SerializerMethodField()
     is_following_author = serializers.SerializerMethodField()
     author_follower_count = serializers.SerializerMethodField()
     ingredients = RecipeIngredientReadSerializer(source="recipe_ingredients", many=True, read_only=True)
@@ -171,6 +174,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             "save_count",
             "is_liked",
             "is_saved",
+            "average_rating",
+            "rating_count",
+            "user_rating",
             "is_following_author",
             "author_follower_count",
             "ingredients",
@@ -193,6 +199,9 @@ class RecipeSerializer(serializers.ModelSerializer):
             "save_count",
             "is_liked",
             "is_saved",
+            "average_rating",
+            "rating_count",
+            "user_rating",
             "is_following_author",
             "author_follower_count",
             "published_date",
@@ -251,6 +260,28 @@ class RecipeSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return SavedRecipe.objects.filter(recipe=obj, user=request.user).exists()
+
+    def get_average_rating(self, obj):
+        average_rating = getattr(obj, "average_rating", None)
+        if average_rating is not None:
+            return round(float(average_rating), 2)
+        aggregate = obj.ratings.aggregate(value=models.Avg("rating"))
+        value = aggregate.get("value")
+        return round(float(value), 2) if value is not None else 0
+
+    def get_rating_count(self, obj):
+        rating_count = getattr(obj, "rating_count", None)
+        if rating_count is not None:
+            return rating_count
+        return obj.ratings.count()
+
+    def get_user_rating(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return 0
+        rating = RecipeRating.objects.filter(recipe=obj, user=request.user).values_list("rating", flat=True).first()
+        return int(rating) if rating else 0
+
 
     def get_is_following_author(self, obj):
         request = self.context.get("request")

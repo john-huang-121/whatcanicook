@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from django.db.models import Count, Q
+from django.db.models import Avg, Count, Q
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,7 +23,12 @@ def visible_recipes_for(user):
             "recipe_instructions__instruction",
             "recipe_images",
         )
-        .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
+        .annotate(
+            like_count=Count("likes", distinct=True),
+            save_count=Count("saves", distinct=True),
+            average_rating=Avg("ratings__rating"),
+            rating_count=Count("ratings", distinct=True),
+        )
     )
 
 

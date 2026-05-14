@@ -4,6 +4,7 @@ import LocalDiningIcon from '@mui/icons-material/LocalDining'
 import RestaurantIcon from '@mui/icons-material/Restaurant'
 import WhatshotIcon from '@mui/icons-material/Whatshot'
 import Alert from '@mui/material/Alert'
+import Rating from '@mui/material/Rating'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
@@ -114,6 +115,24 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
     }
   }
 
+
+  async function rateRecipe(nextRating: number | null) {
+    if (!recipe || !requireLogin()) return
+
+    setActionError('')
+    setBusyAction(null)
+
+    try {
+      const updatedRecipe = await apiFetch<Recipe>(`/api/recipes/${recipe.id}/rate/`, {
+        method: nextRating && nextRating > 0 ? 'POST' : 'DELETE',
+        body: nextRating && nextRating > 0 ? { rating: nextRating } : undefined,
+      })
+      setRecipe(updatedRecipe)
+    } catch (requestError) {
+      setActionError(formatErrors(requestError))
+    }
+  }
+
   const cuisineLabel = recipe.cuisine_label || titleize(recipe.cuisine)
   const recipeFacts = [
     {
@@ -197,6 +216,18 @@ export function RecipeDetailPage({ auth, navigate, recipeId }: { auth: AuthState
           </section>
 
           <div className="social-actions recipe-detail-actions">
+            <div className="recipe-rating-block">
+              <Rating
+                name="recipe-user-rating"
+                value={recipe.user_rating}
+                max={5}
+                onChange={(_, value) => void rateRecipe(value)}
+                readOnly={!recipe.is_public || recipe.is_owner}
+              />
+              <p className="recipe-rating-text">
+                {recipe.average_rating.toFixed(1)} / 5 ({recipe.rating_count} ratings)
+              </p>
+            </div>
             {recipe.is_public && !recipe.is_owner && (
               <Button
                 type="button"
