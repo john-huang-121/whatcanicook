@@ -1,7 +1,7 @@
-from django.db.models import BooleanField, Count, Exists, IntegerField, OuterRef, Subquery, Value
+from django.db.models import Avg, BooleanField, Count, Exists, FloatField, IntegerField, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 
-from social.models import RecipeLike, SavedRecipe, UserFollow
+from social.models import RecipeLike, RecipeRating, SavedRecipe, UserFollow
 
 
 def with_recipe_serializer_data(queryset, user):
@@ -27,6 +27,20 @@ def with_recipe_serializer_data(queryset, user):
         .annotate(total=Count("pk"))
         .values("total")
     )
+    average_rating = (
+        RecipeRating.objects.filter(recipe_id=OuterRef("pk"))
+        .order_by()
+        .values("recipe_id")
+        .annotate(average=Avg("rating"))
+        .values("average")
+    )
+    rating_count = (
+        RecipeRating.objects.filter(recipe_id=OuterRef("pk"))
+        .order_by()
+        .values("recipe_id")
+        .annotate(total=Count("pk"))
+        .values("total")
+    )
 
     annotations = {
         "like_count": Coalesce(
@@ -44,6 +58,16 @@ def with_recipe_serializer_data(queryset, user):
             Value(0),
             output_field=IntegerField(),
         ),
+        "average_rating": Coalesce(
+            Subquery(average_rating, output_field=FloatField()),
+            Value(0.0),
+            output_field=FloatField(),
+        ),
+        "rating_count": Coalesce(
+            Subquery(rating_count, output_field=IntegerField()),
+            Value(0),
+            output_field=IntegerField(),
+        ),
     }
 
     if user_id is None:
@@ -51,13 +75,24 @@ def with_recipe_serializer_data(queryset, user):
             is_liked=Value(False, output_field=BooleanField()),
             is_saved=Value(False, output_field=BooleanField()),
             is_following_author=Value(False, output_field=BooleanField()),
+            user_rating=Value(0, output_field=IntegerField()),
         )
     else:
+        user_rating = (
+            RecipeRating.objects.filter(recipe_id=OuterRef("pk"), user_id=user_id)
+            .order_by()
+            .values("rating")[:1]
+        )
         annotations.update(
             is_liked=Exists(RecipeLike.objects.filter(recipe_id=OuterRef("pk"), user_id=user_id)),
             is_saved=Exists(SavedRecipe.objects.filter(recipe_id=OuterRef("pk"), user_id=user_id)),
             is_following_author=Exists(
                 UserFollow.objects.filter(follower_id=user_id, following_id=OuterRef("created_by_id"))
+            ),
+            user_rating=Coalesce(
+                Subquery(user_rating, output_field=IntegerField()),
+                Value(0),
+                output_field=IntegerField(),
             ),
         )
 

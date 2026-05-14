@@ -73,7 +73,7 @@ export function DashboardPage({ auth, navigate }: { auth: AuthState; navigate: N
   const discoverRows = useMemo<Record<DiscoverRowKey, Recipe[]>>(() => {
     const feed = dashboard?.feed ?? []
     const saved = dashboard?.saved_recipes ?? []
-    const topRated = [...feed].sort((a, b) => b.like_count - a.like_count).slice(0, DISCOVER_ROW_LIMIT)
+    const topRated = [...feed].sort((a, b) => b.average_rating - a.average_rating).slice(0, DISCOVER_ROW_LIMIT)
     const newest = [...feed]
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
       .slice(0, DISCOVER_ROW_LIMIT)
@@ -102,8 +102,20 @@ export function DashboardPage({ auth, navigate }: { auth: AuthState; navigate: N
           onChange={(_event, nextTab: DashboardTab) => setTab(nextTab)}
           value={tab}
         >
-          <Tab className="dashboard-tab" label="Discover" value="discover" />
-          <Tab className="dashboard-tab" label="Community" value="community" />
+          <Tab
+            className="dashboard-tab"
+            icon={<img alt="" aria-hidden="true" className="dashboard-tab-icon" src="/compass-favicon.png" />}
+            iconPosition="start"
+            label="Discover"
+            value="discover"
+          />
+          <Tab
+            className="dashboard-tab"
+            icon={<img alt="" aria-hidden="true" className="dashboard-tab-icon" src="/community-favicon.png" />}
+            iconPosition="start"
+            label="Community"
+            value="community"
+          />
         </Tabs>
 
         {tab === 'discover' ? (

@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from recipes.models import Cuisine, Recipe
 
-from .models import RecipeLike, SavedRecipe, UserFollow
+from .models import RecipeLike, RecipeRating, SavedRecipe, UserFollow
 
 User = get_user_model()
 
@@ -90,6 +90,38 @@ class SocialApiTests(TestCase):
         self.assertEqual(private_response.status_code, 404)
         self.assertEqual(own_response.status_code, 400)
         self.assertFalse(RecipeLike.objects.exists())
+
+
+    def test_user_can_rate_and_clear_rating(self):
+        self.client.login(username="reader", password="testpass123")
+
+        response = self.client.post(
+            reverse("social:recipe-rate", args=[self.public_recipe.id]),
+            data={"rating": 5},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user_rating"], 5)
+        self.assertEqual(response.json()["rating_count"], 1)
+        self.assertEqual(response.json()["average_rating"], 5.0)
+        self.assertEqual(RecipeRating.objects.count(), 1)
+
+        update_response = self.client.post(
+            reverse("social:recipe-rate", args=[self.public_recipe.id]),
+            data={"rating": 3},
+            content_type="application/json",
+        )
+        self.assertEqual(update_response.status_code, 200)
+        self.assertEqual(update_response.json()["user_rating"], 3)
+        self.assertEqual(update_response.json()["average_rating"], 3.0)
+        self.assertEqual(RecipeRating.objects.count(), 1)
+
+        clear_response = self.client.delete(reverse("social:recipe-rate", args=[self.public_recipe.id]))
+        self.assertEqual(clear_response.status_code, 200)
+        self.assertEqual(clear_response.json()["user_rating"], 0)
+        self.assertEqual(clear_response.json()["rating_count"], 0)
+        self.assertEqual(clear_response.json()["average_rating"], 0)
 
     def test_user_can_save_and_list_saved_recipes(self):
         self.client.login(username="reader", password="testpass123")

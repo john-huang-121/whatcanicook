@@ -10,5 +10,6 @@ urlpatterns = [
     path("saved-recipes/", views.SavedRecipeListView.as_view(), name="saved-recipe-list"),
     path("recipes/<int:recipe_id>/like/", views.RecipeLikeView.as_view(), name="recipe-like"),
     path("recipes/<int:recipe_id>/save/", views.SavedRecipeView.as_view(), name="recipe-save"),
+    path("recipes/<int:recipe_id>/rate/", views.RecipeRatingView.as_view(), name="recipe-rate"),
     path("users/<int:user_id>/follow/", views.FollowUserView.as_view(), name="user-follow"),
 ]

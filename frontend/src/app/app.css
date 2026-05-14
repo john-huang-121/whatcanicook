@@ -357,7 +357,7 @@ p {
 
 .page-band {
   min-height: calc(100vh - 73px);
-  padding: clamp(2rem, 6vw, 4rem) 1rem;
+  padding: 1rem 1rem clamp(2rem, 6vw, 4rem);
 }
 
 .user-workspace {
@@ -2986,6 +2986,12 @@ main h3 {
   transform: translateY(1px);
 }
 
+.dashboard-tab-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+}
+
 .dashboard-discover {
   display: grid;
   gap: 2rem;
@@ -3060,7 +3066,7 @@ main h3 {
 }
 
 .dashboard-recipe-row .scrollable-row-header h2 {
-  color: #15110b;
+  color: var(--heirloom-red);
   font-size: clamp(1.9rem, 3vw, 2.45rem);
   line-height: 1.08;
 }
@@ -3216,7 +3222,7 @@ main h3 {
   display: -webkit-box;
   min-height: 3.2rem;
   overflow: hidden;
-  color: #15110b;
+  color: var(--heirloom-red);
   font-size: clamp(1.35rem, 1.6vw, 1.72rem);
   line-height: 1.05;
   -webkit-box-orient: vertical;
@@ -3239,6 +3245,12 @@ main h3 {
   font-family:
     "Trebuchet MS", "Gill Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 0.78rem;
+}
+
+.dashboard-recipe-card-rating.unrated,
+.dashboard-recipe-card-rating.unrated small,
+.recipe-rating-text.unrated {
+  color: var(--heirloom-muted);
 }
 
 .dashboard-recipe-card-footer {
@@ -3355,4 +3367,17 @@ main h3 {
 
 .dashboard-community-card-button p {
   color: var(--text-muted);
+}
+
+.recipe-rating-block {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.recipe-rating-text {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.95rem;
 }

@@ -21,3 +21,5 @@ npm run build
 ```
 
 <a target="_blank" href="https://icons8.com/icon/581/favorite">Favorite</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>
+<a target="_blank" href="https://icons8.com/icon/Rp2dqMbh4b7c/crowd">Community</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>
+<a target="_blank" href="https://icons8.com/icon/9672/compass">Compass</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>

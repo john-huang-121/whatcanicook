@@ -16,6 +16,10 @@ export function RecipeCard({
 }) {
   const [displayRecipe, setDisplayRecipe] = useState(recipe)
   const cardClassName = ['recipe-card', 'dashboard-recipe-card', className].filter(Boolean).join(' ')
+  const averageRating = displayRecipe.average_rating.toFixed(1)
+  const hasRating = displayRecipe.rating_count > 0
+  const ratingText = hasRating ? `${averageRating} / 5` : 'Unrated'
+  const ratingLabel = hasRating ? `Average rating ${averageRating} out of 5` : 'Unrated recipe'
 
   useEffect(() => {
     setDisplayRecipe(recipe)
@@ -42,9 +46,12 @@ export function RecipeCard({
       >
         <div className="recipe-card-body dashboard-recipe-card-body">
           <h2>{displayRecipe.title}</h2>
-          <p className="dashboard-recipe-card-rating" aria-label={`${displayRecipe.like_count} likes`}>
+          <p
+            className={`dashboard-recipe-card-rating ${hasRating ? '' : 'unrated'}`}
+            aria-label={ratingLabel}
+          >
             <span aria-hidden="true">{'\u2606 \u2606 \u2606 \u2606 \u2606'}</span>
-            <small>({displayRecipe.like_count})</small>
+            <small>{ratingText}</small>
           </p>
           <div className="dashboard-recipe-card-footer">
             <span>{displayRecipe.total_time ? `${displayRecipe.total_time} mins` : 'Quick recipe'}</span>
