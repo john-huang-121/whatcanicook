@@ -140,6 +140,7 @@ class SocialApiTests(TestCase):
 
     def test_dashboard_returns_feed_saved_recipes_and_stats(self):
         UserFollow.objects.create(follower=self.user, following=self.author)
+        RecipeLike.objects.create(user=self.user, recipe=self.public_recipe)
         SavedRecipe.objects.create(user=self.user, recipe=self.public_recipe)
         self.client.login(username="reader", password="testpass123")
 
@@ -148,6 +149,8 @@ class SocialApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([recipe["title"] for recipe in response.json()["feed"]], ["Shared Noodles"])
         self.assertEqual([recipe["title"] for recipe in response.json()["saved_recipes"]], ["Shared Noodles"])
+        self.assertTrue(response.json()["feed"][0]["is_liked"])
+        self.assertTrue(response.json()["saved_recipes"][0]["is_saved"])
         self.assertEqual(response.json()["stats"]["recipe_count"], 1)
         self.assertEqual(response.json()["stats"]["following_count"], 1)
         self.assertEqual(response.json()["stats"]["saved_recipe_count"], 1)

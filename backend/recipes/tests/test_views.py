@@ -17,6 +17,7 @@ from recipes.models import (
     UserIngredientStatus,
 )
 from recipes.storage_paths import recipe_images_prefix
+from social.models import RecipeLike, SavedRecipe, UserFollow
 
 User = get_user_model()
 
@@ -213,6 +214,22 @@ class RecipeApiTests(TestCase):
         recipe_titles = [recipe["title"] for recipe in response.json()]
 
         self.assertIn("Private Pasta", recipe_titles)
+
+    def test_recipe_list_includes_current_user_social_state(self):
+        RecipeLike.objects.create(user=self.other_user, recipe=self.public_recipe)
+        SavedRecipe.objects.create(user=self.other_user, recipe=self.public_recipe)
+        UserFollow.objects.create(follower=self.other_user, following=self.owner)
+        self.client.login(username="other", password="testpass123")
+
+        response = self.client.get(reverse("recipes:recipe-list"))
+
+        recipes_by_title = {recipe["title"]: recipe for recipe in response.json()}
+        self.assertTrue(recipes_by_title["Public Pasta"]["is_liked"])
+        self.assertTrue(recipes_by_title["Public Pasta"]["is_saved"])
+        self.assertTrue(recipes_by_title["Public Pasta"]["is_following_author"])
+        self.assertEqual(recipes_by_title["Public Pasta"]["like_count"], 1)
+        self.assertEqual(recipes_by_title["Public Pasta"]["save_count"], 1)
+        self.assertEqual(recipes_by_title["Public Pasta"]["author_follower_count"], 1)
 
     def test_search_matches_recipe_title(self):
         response = self.client.get(reverse("recipes:recipe-list"), {"q": "Public"})

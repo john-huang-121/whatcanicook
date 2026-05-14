@@ -129,6 +129,12 @@ class Recipe(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     objects = RecipeQuerySet.as_manager()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_public", "-created_at"], name="recipe_public_created_idx"),
+            models.Index(fields=["created_by", "-created_at"], name="recipe_author_created_idx"),
+        ]
+
     def __str__(self):
         return self.title
     

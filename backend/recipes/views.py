@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.shortcuts import get_object_or_404
-from django.db.models import Count, Q
+from django.db.models import Q
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,22 +9,13 @@ from whatcanicook.services.uploads import S3UploadService, UploadServiceError
 from whatcanicook.upload_serializers import ImageUploadRequestSerializer
 
 from .models import MAX_RECIPE_IMAGES, Cuisine, Ingredient, Recipe, Unit, normalize_ingredient_name
+from .querysets import with_recipe_serializer_data
 from .serializers import CuisineSerializer, IngredientSerializer, RecipeSerializer, UnitSerializer
 from .storage_paths import recipe_image_storage_name
 
 
 def visible_recipes_for(user):
-    return (
-        Recipe.objects.visible_to(user)
-        .select_related("created_by")
-        .prefetch_related(
-            "recipe_ingredients__ingredient",
-            "recipe_ingredients__user_ingredient",
-            "recipe_instructions__instruction",
-            "recipe_images",
-        )
-        .annotate(like_count=Count("likes", distinct=True), save_count=Count("saves", distinct=True))
-    )
+    return with_recipe_serializer_data(Recipe.objects.visible_to(user), user)
 
 
 class CuisineListView(APIView):

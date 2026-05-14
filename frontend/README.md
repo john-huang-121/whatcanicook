@@ -19,3 +19,5 @@ The Vite dev server proxies `/api` and `/media` to `http://127.0.0.1:8000`.
 npm run lint
 npm run build
 ```
+
+<a target="_blank" href="https://icons8.com/icon/581/favorite">Favorite</a> icon by <a target="_blank" href="https://icons8.com">Icons8</a>

@@ -241,12 +241,20 @@ class RecipeSerializer(serializers.ModelSerializer):
         return obj.saves.count()
 
     def get_is_liked(self, obj):
+        is_liked = getattr(obj, "is_liked", None)
+        if is_liked is not None:
+            return bool(is_liked)
+
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
         return RecipeLike.objects.filter(recipe=obj, user=request.user).exists()
 
     def get_is_saved(self, obj):
+        is_saved = getattr(obj, "is_saved", None)
+        if is_saved is not None:
+            return bool(is_saved)
+
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
@@ -256,9 +264,15 @@ class RecipeSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated or obj.created_by_id == request.user.id:
             return False
+        is_following_author = getattr(obj, "is_following_author", None)
+        if is_following_author is not None:
+            return bool(is_following_author)
         return UserFollow.objects.filter(follower=request.user, following=obj.created_by).exists()
 
     def get_author_follower_count(self, obj):
+        author_follower_count = getattr(obj, "author_follower_count", None)
+        if author_follower_count is not None:
+            return author_follower_count
         return obj.created_by.follower_relationships.count()
 
     def validate_cuisine(self, value):

@@ -19,6 +19,9 @@ class RecipeLike(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["recipe", "user"], name="recipe_like_recipe_user_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["user", "recipe"], name="unique_recipe_like"),
         ]
@@ -42,6 +45,10 @@ class SavedRecipe(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["recipe", "user"], name="saved_recipe_recipe_user_idx"),
+            models.Index(fields=["user", "-created_at"], name="saved_recipe_user_created_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["user", "recipe"], name="unique_saved_recipe"),
         ]
@@ -83,4 +90,3 @@ class UserFollow(models.Model):
 
     def __str__(self):
         return f"{self.follower} follows {self.following}"
-
