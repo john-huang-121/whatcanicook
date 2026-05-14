@@ -3247,6 +3247,25 @@ main h3 {
   font-size: 0.78rem;
 }
 
+.dashboard-recipe-card-rating .MuiRating-root {
+  display: inline-flex;
+  font-size: 1.02rem;
+}
+
+.dashboard-recipe-card-rating .MuiRating-icon,
+.dashboard-recipe-card-rating .MuiRating-decimal {
+  display: inline-flex !important;
+  margin: 0 !important;
+}
+
+.dashboard-recipe-card-rating .MuiRating-iconFilled {
+  color: #faaf00;
+}
+
+.dashboard-recipe-card-rating .MuiRating-iconEmpty {
+  color: rgba(0, 0, 0, 0.26);
+}
+
 .dashboard-recipe-card-rating.unrated,
 .dashboard-recipe-card-rating.unrated small,
 .recipe-rating-text.unrated {

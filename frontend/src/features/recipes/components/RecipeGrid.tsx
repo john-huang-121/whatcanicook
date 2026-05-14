@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
+import Rating from '@mui/material/Rating'
 import { recipeImage } from '../../../config/constants'
 import type { Navigate, Recipe } from '../../../types'
 import { RecipeLikeButton } from './RecipeLikeButton'
@@ -18,8 +19,10 @@ export function RecipeCard({
   const cardClassName = ['recipe-card', 'dashboard-recipe-card', className].filter(Boolean).join(' ')
   const averageRating = displayRecipe.average_rating.toFixed(1)
   const hasRating = displayRecipe.rating_count > 0
-  const ratingText = hasRating ? `${averageRating} / 5` : 'Unrated'
-  const ratingLabel = hasRating ? `Average rating ${averageRating} out of 5` : 'Unrated recipe'
+  const ratingText = hasRating ? `${averageRating} / 5 (${displayRecipe.rating_count})` : 'Unrated'
+  const ratingLabel = hasRating
+    ? `Average rating ${averageRating} out of 5 from ${displayRecipe.rating_count} ratings`
+    : 'Unrated recipe'
 
   useEffect(() => {
     setDisplayRecipe(recipe)
@@ -50,7 +53,14 @@ export function RecipeCard({
             className={`dashboard-recipe-card-rating ${hasRating ? '' : 'unrated'}`}
             aria-label={ratingLabel}
           >
-            <span aria-hidden="true">{'\u2606 \u2606 \u2606 \u2606 \u2606'}</span>
+            <Rating
+              aria-hidden="true"
+              max={5}
+              precision={0.5}
+              readOnly
+              size="small"
+              value={hasRating ? displayRecipe.average_rating : 0}
+            />
             <small>{ratingText}</small>
           </p>
           <div className="dashboard-recipe-card-footer">
