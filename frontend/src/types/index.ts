@@ -166,6 +166,9 @@ export type Recipe = {
   save_count: number
   is_liked: boolean
   is_saved: boolean
+  average_rating: number
+  rating_count: number
+  user_rating: number
   is_following_author: boolean
   author_follower_count: number
   ingredients: RecipeIngredient[]

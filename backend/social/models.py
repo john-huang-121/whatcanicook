@@ -19,6 +19,9 @@ class RecipeLike(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["recipe", "user"], name="recipe_like_recipe_user_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["user", "recipe"], name="unique_recipe_like"),
         ]
@@ -42,6 +45,10 @@ class SavedRecipe(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["recipe", "user"], name="saved_recipe_recipe_user_idx"),
+            models.Index(fields=["user", "-created_at"], name="saved_recipe_user_created_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["user", "recipe"], name="unique_saved_recipe"),
         ]
@@ -84,3 +91,28 @@ class UserFollow(models.Model):
     def __str__(self):
         return f"{self.follower} follows {self.following}"
 
+
+class RecipeRating(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recipe_ratings",
+    )
+    recipe = models.ForeignKey(
+        "recipes.Recipe",
+        on_delete=models.CASCADE,
+        related_name="ratings",
+    )
+    rating = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "recipe"], name="unique_recipe_rating"),
+            models.CheckConstraint(condition=Q(rating__gte=1, rating__lte=5), name="recipe_rating_between_1_and_5"),
+        ]
+
+    def __str__(self):
+        return f"{self.user} rated {self.recipe} ({self.rating}/5)"
